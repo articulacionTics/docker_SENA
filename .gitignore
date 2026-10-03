@@ -1,0 +1,8 @@
+# Secretos locales: NUNCA versionar
+.env
+
+.git/
+__pycache__/
+*.pyc
+.vscode/
+.DS_Store
