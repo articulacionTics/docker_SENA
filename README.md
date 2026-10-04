@@ -2,6 +2,38 @@
 
 [![Publicar imagen](https://github.com/articulacionTics/docker_SENA/actions/workflows/publicar-imagen.yml/badge.svg)](https://github.com/articulacionTics/docker_SENA/actions/workflows/publicar-imagen.yml)
 
+**Autora:** Lily Pardo · **Ficha:** 3602390 · SENA, Centro de Comercio y Servicios, Regional Tolima
+**Programa:** Despliegue de aplicaciones y servicios en contenedores Docker (22810024) · **Competencia:** 220501086
+
+## 🔗 Enlaces públicos (entrega)
+
+Todos los enlaces son públicos y se abren sin iniciar sesión en GitHub.
+
+| Qué | Enlace |
+|---|---|
+| **Repositorio** | https://github.com/articulacionTics/docker_SENA |
+| **GitHub Actions: todas las corridas** | **https://github.com/articulacionTics/docker_SENA/actions** |
+| Flujo «Publicar imagen» (historial del workflow) | https://github.com/articulacionTics/docker_SENA/actions/workflows/publicar-imagen.yml |
+| Archivo del workflow | [`.github/workflows/publicar-imagen.yml`](.github/workflows/publicar-imagen.yml) |
+| Imagen publicada en GHCR | https://github.com/articulacionTics/docker_SENA/pkgs/container/docker_sena |
+
+Corridas de GitHub Actions, todas en verde ✅:
+
+| Corrida | Disparador | Commit | Resultado |
+|---|---|---|---|
+| [37179035255](https://github.com/articulacionTics/docker_SENA/actions/runs/37179035255) | push a `main`: primera publicación automática | `936efea` | ✅ success |
+| [37179196305](https://github.com/articulacionTics/docker_SENA/actions/runs/37179196305) | push a `main`: segunda corrida, con caché (33 s → 21 s) | `eedc2f7` | ✅ success |
+| [37179265278](https://github.com/articulacionTics/docker_SENA/actions/runs/37179265278) | push a `main` | `734cdec` | ✅ success |
+| [37179266818](https://github.com/articulacionTics/docker_SENA/actions/runs/37179266818) | etiqueta **`v1.0.0`**: publica la imagen `1.0.0` | `734cdec` | ✅ success |
+| [37179327708](https://github.com/articulacionTics/docker_SENA/actions/runs/37179327708) | push a `main` | `58d1f9b` | ✅ success |
+| [37218004512](https://github.com/articulacionTics/docker_SENA/actions/runs/37218004512) | push a `main` | `d7973af` | ✅ success |
+
+Cada push a `main` genera una corrida nueva; la lista completa y actualizada está siempre en la pestaña [Actions](https://github.com/articulacionTics/docker_SENA/actions).
+
+```bash
+docker pull ghcr.io/articulaciontics/docker_sena:1.0.0
+```
+
 ## Descripción
 
 Proyecto integrador de la guía SENA **«Despliegue de aplicaciones y servicios en contenedores Docker»**: programa 22810024, competencia 220501086 (RA1 y RA2).
@@ -338,13 +370,15 @@ El procedimiento, el job `desplegar` del workflow y el estado del despliegue est
 
 ## Entrega del proyecto (según la guía)
 
-Según la guía GFPI-F-135 (sección 4 y Anexo C), **el único entregable calificable es este repositorio de GitHub**, evaluado al finalizar la semana 5 junto con el **video de demostración**.
+Según la guía GFPI-F-135 (sección 4 y Anexo C), **el único entregable calificable es este repositorio de GitHub**, evaluado al finalizar la semana 5.
 
 ### Cómo se entrega
 
-1. Al cerrar la semana 5, publique en el **aula virtual** el enlace del repositorio: **https://github.com/articulacionTics/docker_SENA**.
-2. Adjunte o enlace el **video de demostración** de 3 a 5 minutos (ver más abajo).
-3. El repositorio debe ser **público**, igual que el paquete de GHCR, para que el instructor pueda clonarlo y descargar la imagen sin credenciales.
+1. Publique en el **aula virtual**:
+   - el enlace del repositorio: **https://github.com/articulacionTics/docker_SENA**;
+   - el **enlace público de GitHub Actions**, donde están las corridas del flujo creado: **https://github.com/articulacionTics/docker_SENA/actions**.
+2. El repositorio y el paquete de GHCR deben ser **públicos**. Los dos lo son: los enlaces se abren y la imagen se descarga sin credenciales.
+3. Este README debe identificar a la autora y lo desarrollado. Ver [Autora y trabajo desarrollado](#autora-y-trabajo-desarrollado).
 
 ### Cómo lo revisa el instructor
 
@@ -383,22 +417,27 @@ El estado verificado de cada criterio está en [`docs/checklist-anexo-c.md`](doc
 - [x] La pestaña **Actions** muestra corridas en verde.
 - [x] El paquete de GHCR es **público** y tiene etiquetas inmutables (`sha-…`, `1.0.0`).
 - [x] Etiqueta `v1.0.0` publicada.
+- [x] Enlace público de GitHub Actions verificado (se abre sin sesión).
+- [x] Nombre de la autora y trabajo desarrollado en este README.
 - [ ] *Release* `v1.0.0` creado en GitHub (*Releases → Draft a new release*).
 - [ ] Despliegue en el servidor remoto. Pendiente: el instructor debe entregar las credenciales.
-- [ ] Video de demostración grabado. Enlace: _(agregar aquí)_.
 
-### Guion sugerido para el video (3 a 5 minutos)
+## Autora y trabajo desarrollado
 
-1. Repositorio en GitHub: estructura, README y la pestaña Actions en verde (≈ 30 s).
-2. `git clone` → `cp .env.example .env` → `docker compose up -d --build` (≈ 60 s).
-3. `docker compose ps`: tres servicios y solo el proxy con puerto publicado (≈ 20 s).
-4. Navegador: `/health`, `/api/status` y `/docs`; crear una nota (≈ 40 s).
-5. Persistencia: `docker compose down` → `docker compose up -d` → la nota sigue ahí (≈ 40 s).
-6. Aislamiento: `curl localhost:5432` y `localhost:8000` no responden; `docker compose exec api id` → uid 1001 (≈ 30 s).
-7. Paquete en GHCR y `docker pull ghcr.io/articulaciontics/docker_sena:1.0.0` (≈ 20 s).
-8. Despliegue remoto, si el servidor está disponible (≈ 30 s).
+**Lily Pardo** · Ficha **3602390** · SENA, Centro de Comercio y Servicios, Regional Tolima · GitHub: [articulacionTics](https://github.com/articulacionTics)
 
-## Autores
+Proyecto desarrollado individualmente (equipo de un integrante).
 
-- **Lily Pardo** — Ficha 3602390 — SENA, Centro de Comercio y Servicios, Regional Tolima
-- GitHub: [articulacionTics](https://github.com/articulacionTics)
+### Lo que desarrollé
+
+| Actividad | Trabajo realizado | Resultado |
+|---|---|---|
+| **AA1 — Requisitos y arquitectura** | Matriz de requisitos de infraestructura RI-01…RI-15 y RI-OS-01/02/03 (Windows, Linux, macOS), cada uno con criterio de aceptación y método de verificación; tabla de componentes HW/SW; diagrama de arquitectura con puertos, red interna y volumen | [`docs/requisitos.md`](docs/requisitos.md), [`docs/arquitectura.png`](docs/arquitectura.png) |
+| **AA2 — Entorno e imágenes base** | Diagnóstico del equipo; Docker Engine **29.8.2** en Ubuntu 24.04 sobre **WSL2** (sin Docker Desktop); búsqueda, descarga e inspección de `postgres:18-alpine`, `python:3.14-slim` y `nginx:1.30-alpine`; PostgreSQL y Nginx como contenedores sueltos; **9 problemas de entorno diagnosticados y resueltos** (DNS de WSL en contenedores, builder antiguo, firewall UFW de otra distro, volumen de PostgreSQL 18…) | [`docs/entorno.md`](docs/entorno.md), [`docs/imagenes.md`](docs/imagenes.md) |
+| **AA3 — Imagen propia** | API FastAPI mínima (`/health`, `/api/status`, `/api/notas`) con configuración solo por variables de entorno; **Dockerfile multi-etapa** con usuario sin privilegios `appuser` (UID 1001), sin `pip` en la imagen final y con `HEALTHCHECK`; ciclo de vida (`tag`, `history`, `rmi`, `system df`) | Imagen de **275 MB frente a 780 MB** sin multi-etapa (−65 %) |
+| **AA4 — Orquestación** | `docker-compose.yml` con `db`, `api` y `proxy` en la red `interna`, volumen `pgdata`, healthchecks, `depends_on: service_healthy`, límites de memoria y `restart`; Nginx como reverse proxy; **solo el proxy expone un puerto** (8080) | Solución completa con **un solo comando** |
+| **AA5 — Validación, publicación y documentación** | 10 pruebas documentadas (arranque, proxy, API→BD, red, persistencia, aislamiento, volumen, usuario, consumo y secretos); publicación **manual** en GHCR; flujo de **GitHub Actions** con caché y etiquetas inmutables `sha-…`; etiqueta `v1.0.0`; README y manual técnico | [`docs/pruebas.md`](docs/pruebas.md) (10/10 PASS), [Actions](https://github.com/articulacionTics/docker_SENA/actions) en verde, [`docs/despliegue-automatizado.md`](docs/despliegue-automatizado.md) |
+| **Transferencia** | Compose de producción que usa la imagen de GHCR sin `build:`; job `desplegar` por SSH listo con secretos; propuesta de escalamiento a la nube y consideraciones de la **Ley 1581 de 2012** | [`deploy/docker-compose.prod.yml`](deploy/docker-compose.prod.yml), [`docs/manual-tecnico.md`](docs/manual-tecnico.md) |
+| **Auditoría** | Prueba desde copia limpia (clonar → `cp .env.example .env` → `up`) y revisión de los 9 criterios del Anexo C | [`docs/checklist-anexo-c.md`](docs/checklist-anexo-c.md): 8 PASS · 1 pendiente (servidor remoto) |
+
+Estado por fase: [`docs/estado-proyecto.md`](docs/estado-proyecto.md).

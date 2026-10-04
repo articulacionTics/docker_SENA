@@ -15,4 +15,4 @@
 | Servidor remoto | PENDING | Pendiente de realizar cuando el instructor entregue las credenciales del servidor. Procedimiento y `deploy/docker-compose.prod.yml` listos |
 | Copia limpia | PASS | `docs/checklist-anexo-c.md` §1 |
 | Auditoría Anexo C | 8 PASS · 1 PENDING | `docs/checklist-anexo-c.md` (pendiente: despliegue remoto) |
-| Video de demostración | PENDING | Lo graba la aprendiz |
+| Entrega: enlace público de Actions | PASS | https://github.com/articulacionTics/docker_SENA/actions es público (HTTP 200 sin sesión); 6 corridas en verde. Nombre y trabajo desarrollado en el README. El instructor no solicitó video |

@@ -60,6 +60,6 @@ Después se limpió con `docker compose down -v` (solo el volumen de la copia li
 | Pendiente | Responsable | Detalle |
 |---|---|---|
 | Despliegue en el servidor remoto | Instructor (credenciales) → aprendiz | Procedimiento en [`docs/manual-tecnico.md`](manual-tecnico.md) §9. Para el despliegue automático: secretos `SERVIDOR_*` y variable `DESPLIEGUE_HABILITADO=true` |
-| Video de demostración (3–5 min) | Aprendiz | Mostrar: `git clone` → `cp .env.example .env` → `docker compose up -d --build` → `ps` → `/health` → persistencia → aislamiento → Actions en verde → GHCR |
+| Compartir el enlace **público** de GitHub Actions | Aprendiz (aula virtual) | https://github.com/articulacionTics/docker_SENA/actions (verificado: se abre sin sesión y tiene 6 corridas en verde). El video no fue solicitado por el instructor |
 | Release en GitHub de `v1.0.0` | Aprendiz (interfaz web) | La etiqueta `v1.0.0` ya existe; falta crear el *Release* desde *Releases → Draft a new release* |
 | Reflexión del foro, cuestionario y mapa conceptual | Aprendiz (aula virtual) | Fuera del repositorio. El mapa conceptual está en `C:\LProyectos\cl\mapa-conceptual.png` |
