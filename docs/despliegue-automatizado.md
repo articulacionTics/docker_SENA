@@ -182,4 +182,6 @@ El workflow pasa los secretos por `env:` y no los escribe en el comando, para qu
 | Publicación manual (`1.0.0`) | ✅ Hecha |
 | Workflow en verde | ✅ Corrida 37179035255 |
 | Imagen pública con etiqueta inmutable | ✅ `sha-936efea`, `1.0.0` |
-| Job `desplegar` | Escrito y desactivado. Se activa cuando el instructor entregue el servidor (en el curso, el servidor del aula es compartido y no se despliega sobre él sin autorización) |
+| Job `desplegar` | ✅ **Activo** contra un servidor propio en Google Cloud (http://34.60.209.202:8080/health). Se habilitó con `DESPLIEGUE_HABILITADO=true` y los secretos `SERVIDOR_*`. No se usa el servidor compartido del aula |
+| Despliegue continuo de punta a punta | ✅ Commit `f5d72ca` → [corrida 37225492900](https://github.com/articulacionTics/docker_SENA/actions/runs/37225492900): build y push de `sha-f5d72ca` → verificación de secretos → SSH: `git pull` + `docker compose pull` + `up -d` → `/health` en el servidor. La URL pública pasó sola de `{"status":"okis"}` a `{"status":"ok"}` |
+| Validación de secretos | El paso «Verificar la configuracion del despliegue» detectó secretos mal creados (como *Variables*) en la [corrida 37225163601](https://github.com/articulacionTics/docker_SENA/actions/runs/37225163601) sin exponer valores |

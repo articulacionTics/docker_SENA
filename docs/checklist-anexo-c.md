@@ -15,10 +15,10 @@ Ningún punto se marca PASS sin haber ejecutado o inspeccionado su evidencia.
 | 5 | Tres servicios orquestados con Compose en una red interna; solo el proxy expone puerto | **PASS** | [`docker-compose.yml`](../docker-compose.yml): `db`, `api` y `proxy` en la red `interna`; solo `proxy` tiene `ports` (`8080:80`); `db` y `api` sin `ports`. [`docs/pruebas.md`](pruebas.md) P1, P4 y P6: `docker compose ps`, y `curl` a 5432 y 8000 sin respuesta |
 | 6 | Persistencia de PostgreSQL mediante un volumen | **PASS** | [`docs/pruebas.md`](pruebas.md) P5: la nota creada sobrevive a `docker compose down` + `up -d`; volumen `docker-sena_pgdata` (P7) |
 | 7 | Imagen publicada en un registry | **PASS** | Paquete público https://github.com/articulacionTics/docker_SENA/pkgs/container/docker_sena (`ghcr.io/articulaciontics/docker_sena`), etiquetas `1.0.0`, `latest` y `sha-…`. `docker pull` sin credenciales funcionó ([`docs/despliegue-automatizado.md`](despliegue-automatizado.md) §2) |
-| 8 | Documentación completa (README y manual técnico) **y el despliegue remoto funciona** | **PENDING** | Documentación: **PASS**. El [`README.md`](../README.md) cubre la instalación en los 3 sistemas operativos, ejecución, verificación, GHCR, CI/CD y troubleshooting; el [`docs/manual-tecnico.md`](manual-tecnico.md) incluye arquitectura, pruebas y la propuesta de escalamiento con la Ley 1581. **Despliegue remoto: PENDING**, a la espera de que el instructor entregue el servidor (host, usuario, puerto y clave). El procedimiento y `deploy/docker-compose.prod.yml` están listos y validados con `docker compose config` |
+| 8 | Documentación completa (README y manual técnico) **y el despliegue remoto funciona** | **PASS** | El [`README.md`](../README.md) cubre la instalación en los 3 sistemas operativos, ejecución, verificación, GHCR, CI/CD, troubleshooting y entrega. El [`docs/manual-tecnico.md`](manual-tecnico.md) incluye arquitectura, pruebas y la propuesta de escalamiento con la Ley 1581. **Despliegue remoto funcionando** en un servidor propio de Google Cloud: **http://34.60.209.202:8080/health** → `200 {"status":"ok"}`, `/api/status` → `database: connected`, 8000 y 5432 sin respuesta. Despliegue continuo verificado en la [corrida 37225492900](https://github.com/articulacionTics/docker_SENA/actions/runs/37225492900) (manual técnico §9). VM disponible hasta el 2026-10-06 |
 | 9 | Publicación automática al integrar cambios en la rama principal | **PASS** | [`.github/workflows/publicar-imagen.yml`](../.github/workflows/publicar-imagen.yml). Corridas en verde: [37179035255](https://github.com/articulacionTics/docker_SENA/actions/runs/37179035255), [37179196305](https://github.com/articulacionTics/docker_SENA/actions/runs/37179196305), [37179265278](https://github.com/articulacionTics/docker_SENA/actions/runs/37179265278) y [37179266818](https://github.com/articulacionTics/docker_SENA/actions/runs/37179266818) (tag `v1.0.0`). La imagen aparece en Packages con etiquetas inmutables `sha-…`. [`docs/despliegue-automatizado.md`](despliegue-automatizado.md) explica cómo seguiría la cadena hasta producción |
 
-**Resultado: 8 PASS · 1 PENDING** (despliegue remoto, que depende del servidor del instructor).
+**Resultado: 9 de 9 en PASS.**
 
 ---
 
@@ -55,11 +55,11 @@ $ curl http://localhost:8080/api/status
 
 Después se limpió con `docker compose down -v` (solo el volumen de la copia limpia) y se eliminó la carpeta temporal.
 
-## 2. Pendientes para cerrar el curso
+## 2. Entrega y pendientes
 
-| Pendiente | Responsable | Detalle |
+| Elemento | Estado | Detalle |
 |---|---|---|
-| Despliegue en el servidor remoto | Instructor (credenciales) → aprendiz | Procedimiento en [`docs/manual-tecnico.md`](manual-tecnico.md) §9. Para el despliegue automático: secretos `SERVIDOR_*` y variable `DESPLIEGUE_HABILITADO=true` |
-| Compartir el enlace **público** de GitHub Actions | Aprendiz (aula virtual) | https://github.com/articulacionTics/docker_SENA/actions (verificado: se abre sin sesión y tiene 6 corridas en verde). El video no fue solicitado por el instructor |
+| Despliegue en el servidor remoto | ✅ Hecho | http://34.60.209.202:8080/health (Google Cloud e2-micro), con despliegue continuo desde Actions. Disponible hasta el 2026-10-06 ([`docs/manual-tecnico.md`](manual-tecnico.md) §9) |
+| Compartir el enlace **público** de GitHub Actions | Por publicar en el aula | https://github.com/articulacionTics/docker_SENA/actions (verificado: se abre sin sesión). El instructor no solicitó video |
 | Release en GitHub de `v1.0.0` | Aprendiz (interfaz web) | La etiqueta `v1.0.0` ya existe; falta crear el *Release* desde *Releases → Draft a new release* |
 | Reflexión del foro, cuestionario y mapa conceptual | Aprendiz (aula virtual) | Fuera del repositorio. El mapa conceptual está en `C:\LProyectos\cl\mapa-conceptual.png` |

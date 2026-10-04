@@ -11,6 +11,7 @@ Todos los enlaces son públicos y se abren sin iniciar sesión en GitHub.
 
 | Qué | Enlace |
 |---|---|
+| **🌐 Aplicación desplegada en un servidor remoto (Google Cloud)** | **http://34.60.209.202:8080/health** · [`/api/status`](http://34.60.209.202:8080/api/status) · [`/docs`](http://34.60.209.202:8080/docs). Disponible hasta el **martes 2026-10-06** (después se apaga la VM para no generar costos) |
 | **Repositorio** | https://github.com/articulacionTics/docker_SENA |
 | **GitHub Actions: todas las corridas** | **https://github.com/articulacionTics/docker_SENA/actions** |
 | Flujo «Publicar imagen» (historial del workflow) | https://github.com/articulacionTics/docker_SENA/actions/workflows/publicar-imagen.yml |
@@ -27,8 +28,12 @@ Corridas de GitHub Actions, todas en verde ✅:
 | [37179266818](https://github.com/articulacionTics/docker_SENA/actions/runs/37179266818) | etiqueta **`v1.0.0`**: publica la imagen `1.0.0` | `734cdec` | ✅ success |
 | [37179327708](https://github.com/articulacionTics/docker_SENA/actions/runs/37179327708) | push a `main` | `58d1f9b` | ✅ success |
 | [37218004512](https://github.com/articulacionTics/docker_SENA/actions/runs/37218004512) | push a `main` | `d7973af` | ✅ success |
+| [37225015773](https://github.com/articulacionTics/docker_SENA/actions/runs/37225015773) | push a `main`: **primer despliegue automático en el servidor GCP** (job `desplegar`, intento 2) | `22da6e7` | ✅ success |
+| [37225492900](https://github.com/articulacionTics/docker_SENA/actions/runs/37225492900) | push a `main`: **despliegue continuo verificado**. El servidor se actualizó solo y `/health` pasó a `{"status":"ok"}` | `f5d72ca` | ✅ success |
 
 Cada push a `main` genera una corrida nueva; la lista completa y actualizada está siempre en la pestaña [Actions](https://github.com/articulacionTics/docker_SENA/actions).
+
+> La corrida [37225163601](https://github.com/articulacionTics/docker_SENA/actions/runs/37225163601) (`010f591`) falló a propósito en el paso «Verificar la configuración del despliegue»: los secretos del servidor se habían creado como *Variables* y no como *Secrets*. Tras corregirlos, las corridas siguientes desplegaron con éxito.
 
 ```bash
 docker pull ghcr.io/articulaciontics/docker_sena:1.0.0
@@ -343,18 +348,48 @@ El detalle, el enlace a las corridas y la continuación hacia producción están
 
 ## Despliegue remoto
 
-En el servidor **no se construye**: se usa la imagen publicada, con una etiqueta inmutable.
+✅ **Desplegado y funcionando en Google Cloud:** **http://34.60.209.202:8080/health**. La VM estará encendida hasta el martes **2026-10-06**.
+
+| Dato | Valor |
+|---|---|
+| Proveedor | Google Cloud Compute Engine, nivel gratuito (*Always Free*) |
+| Máquina | `e2-micro` (2 vCPU compartidas, 1 GB de RAM + 1 GB de swap) · disco persistente estándar de 30 GB |
+| Sistema | Ubuntu 24.04 LTS (x86/64) + Docker Engine (repositorio oficial) |
+| Ruta | `/srv/app` (copia del repositorio) |
+| Compose | `deploy/docker-compose.prod.yml`: la API usa `ghcr.io/articulaciontics/docker_sena:<etiqueta inmutable>`, **sin `build:`** |
+| Puerto | 8080 (regla de firewall de VPC `permitir-8080`); 8000 y 5432 no expuestos |
+| Despliegue continuo | Job `desplegar` de GitHub Actions por SSH, con los secretos `SERVIDOR_HOST`, `SERVIDOR_USUARIO`, `SERVIDOR_SSH_KEY` y la variable `DESPLIEGUE_HABILITADO=true` |
+
+Verificación desde Internet (2026-10-04):
+
+```text
+$ curl -i http://34.60.209.202:8080/health
+HTTP/1.1 200 OK
+Server: nginx/1.30.5
+{"status":"ok"}
+
+$ curl http://34.60.209.202:8080/api/status
+{"api":"ok","database":"connected","db_host":"db","db_ip":"172.18.0.2","db_name":"appdb","postgres_version":"18.6","api_hostname":"16660b3a4ebf"}
+
+$ curl --max-time 5 http://34.60.209.202:8000   → sin respuesta (correcto)
+$ curl --max-time 5 http://34.60.209.202:5432   → sin respuesta (correcto)
+```
+
+**Despliegue continuo demostrado:** el commit `f5d72ca` cambió la respuesta de `/health`. La [corrida 37225492900](https://github.com/articulacionTics/docker_SENA/actions/runs/37225492900) construyó la imagen, la publicó como `sha-f5d72ca` y, en el job `desplegar`, actualizó el servidor por SSH y verificó `/health`. Nadie entró a la VM: el servidor pasó solo de `{"status":"okis"}` a `{"status":"ok"}`.
+
+Procedimiento manual (el mismo que se usó en la VM):
 
 ```bash
 git clone https://github.com/articulacionTics/docker_SENA.git /srv/app && cd /srv/app
-cp .env.example .env              # y cambiar DB_ADMIN_PASSWORD
-export API_TAG=1.0.0              # o sha-xxxxxxx
-export PROXY_PORT=8080            # puerto asignado por el instructor
+cp .env.example .env
+sed -i "s/^DB_ADMIN_PASSWORD=.*/DB_ADMIN_PASSWORD=$(openssl rand -hex 16)/" .env   # contraseña propia del servidor
+export API_TAG=1.0.0              # o sha-xxxxxxx (etiqueta inmutable)
+export PROXY_PORT=8080
 docker compose --env-file .env -f deploy/docker-compose.prod.yml pull
 docker compose --env-file .env -f deploy/docker-compose.prod.yml up -d
 ```
 
-El procedimiento, el job `desplegar` del workflow y el estado del despliegue están en [`docs/manual-tecnico.md`](docs/manual-tecnico.md).
+El detalle completo está en [`docs/manual-tecnico.md`](docs/manual-tecnico.md) §9.
 
 ## Troubleshooting
 
@@ -420,7 +455,7 @@ El estado verificado de cada criterio está en [`docs/checklist-anexo-c.md`](doc
 - [x] Enlace público de GitHub Actions verificado (se abre sin sesión).
 - [x] Nombre de la autora y trabajo desarrollado en este README.
 - [ ] *Release* `v1.0.0` creado en GitHub (*Releases → Draft a new release*).
-- [ ] Despliegue en el servidor remoto. Pendiente: el instructor debe entregar las credenciales.
+- [x] Despliegue en un servidor remoto: http://34.60.209.202:8080/health (Google Cloud e2-micro), con despliegue continuo desde GitHub Actions.
 
 ## Autora y trabajo desarrollado
 
@@ -437,7 +472,7 @@ Proyecto desarrollado individualmente (equipo de un integrante).
 | **AA3 — Imagen propia** | API FastAPI mínima (`/health`, `/api/status`, `/api/notas`) con configuración solo por variables de entorno; **Dockerfile multi-etapa** con usuario sin privilegios `appuser` (UID 1001), sin `pip` en la imagen final y con `HEALTHCHECK`; ciclo de vida (`tag`, `history`, `rmi`, `system df`) | Imagen de **275 MB frente a 780 MB** sin multi-etapa (−65 %) |
 | **AA4 — Orquestación** | `docker-compose.yml` con `db`, `api` y `proxy` en la red `interna`, volumen `pgdata`, healthchecks, `depends_on: service_healthy`, límites de memoria y `restart`; Nginx como reverse proxy; **solo el proxy expone un puerto** (8080) | Solución completa con **un solo comando** |
 | **AA5 — Validación, publicación y documentación** | 10 pruebas documentadas (arranque, proxy, API→BD, red, persistencia, aislamiento, volumen, usuario, consumo y secretos); publicación **manual** en GHCR; flujo de **GitHub Actions** con caché y etiquetas inmutables `sha-…`; etiqueta `v1.0.0`; README y manual técnico | [`docs/pruebas.md`](docs/pruebas.md) (10/10 PASS), [Actions](https://github.com/articulacionTics/docker_SENA/actions) en verde, [`docs/despliegue-automatizado.md`](docs/despliegue-automatizado.md) |
-| **Transferencia** | Compose de producción que usa la imagen de GHCR sin `build:`; job `desplegar` por SSH listo con secretos; propuesta de escalamiento a la nube y consideraciones de la **Ley 1581 de 2012** | [`deploy/docker-compose.prod.yml`](deploy/docker-compose.prod.yml), [`docs/manual-tecnico.md`](docs/manual-tecnico.md) |
-| **Auditoría** | Prueba desde copia limpia (clonar → `cp .env.example .env` → `up`) y revisión de los 9 criterios del Anexo C | [`docs/checklist-anexo-c.md`](docs/checklist-anexo-c.md): 8 PASS · 1 pendiente (servidor remoto) |
+| **Transferencia** | **Despliegue en un servidor remoto propio** (Google Cloud e2-micro, Ubuntu 24.04 + Docker Engine) con la imagen de GHCR y sin `build:`; **despliegue continuo** por SSH desde GitHub Actions, con secretos y verificación de `/health`; propuesta de escalamiento a la nube y consideraciones de la **Ley 1581 de 2012** | **http://34.60.209.202:8080/health**, [`deploy/docker-compose.prod.yml`](deploy/docker-compose.prod.yml), [`docs/manual-tecnico.md`](docs/manual-tecnico.md) |
+| **Auditoría** | Prueba desde copia limpia (clonar → `cp .env.example .env` → `up`) y revisión de los 9 criterios del Anexo C | [`docs/checklist-anexo-c.md`](docs/checklist-anexo-c.md): **9 de 9 en PASS** |
 
 Estado por fase: [`docs/estado-proyecto.md`](docs/estado-proyecto.md).

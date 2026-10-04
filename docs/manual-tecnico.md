@@ -87,23 +87,67 @@ Operación: `docker compose logs -f api` · `docker compose exec api sh` · `doc
 
 ## 9. Despliegue remoto
 
-**Estado: pendiente de realizar cuando el instructor entregue las credenciales del servidor** (host, usuario, puerto asignado y clave SSH). No se registran datos de servidor inventados.
+**Estado: ✅ desplegado y funcionando** en **http://34.60.209.202:8080/health**. Es un servidor propio en Google Cloud, porque el servidor del instructor aún no estaba disponible. La VM estará encendida hasta el martes **2026-10-06**; después se elimina para no generar costos.
 
-Procedimiento preparado. El servidor corre Ubuntu con Docker Engine, el mismo motor que en local:
+### 9.1 Servidor
+
+| Dato | Valor |
+|---|---|
+| Proveedor | Google Cloud Compute Engine, nivel gratuito (*Always Free*): estimación de lista USD 6.11/mes, cubierta por el nivel gratuito; con presupuesto y alerta de USD 1 |
+| Máquina | `e2-micro`: 2 vCPU compartidas, 1 GB de RAM y 1 GB de swap añadido |
+| Disco | Disco persistente estándar de 30 GB |
+| Sistema | Ubuntu 24.04 LTS (x86/64), Docker Engine y Compose desde el repositorio oficial (guía AA2, apartado 2A) |
+| Firewall de VPC | `permitir-8080` (TCP 8080, para la aplicación) y `permitir-ssh` (TCP 22, para GitHub Actions) |
+| Ruta de la aplicación | `/srv/app`, copia del repositorio |
+| Arquitectura | x86/64, la misma que la imagen publicada en GHCR (`linux/amd64`) |
+
+### 9.2 Procedimiento realizado
 
 ```bash
-ssh <usuario>@<servidor>
+ssh <usuario>@<servidor>                          # en GCP: botón "SSH" de la consola
 git clone https://github.com/articulacionTics/docker_SENA.git /srv/app && cd /srv/app
-cp .env.example .env && nano .env                 # contraseña propia del servidor
+cp .env.example .env
+sed -i "s/^DB_ADMIN_PASSWORD=.*/DB_ADMIN_PASSWORD=$(openssl rand -hex 16)/" .env   # contraseña propia
 export API_TAG=1.0.0                              # etiqueta inmutable publicada en GHCR
-export PROXY_PORT=<puerto asignado>
+export PROXY_PORT=8080
 docker compose --env-file .env -f deploy/docker-compose.prod.yml pull
 docker compose --env-file .env -f deploy/docker-compose.prod.yml up -d
 docker compose --env-file .env -f deploy/docker-compose.prod.yml ps
 curl http://localhost:$PROXY_PORT/health
 ```
 
-En el servidor **no hay `build:`**: `deploy/docker-compose.prod.yml` usa `image: ghcr.io/articulaciontics/docker_sena:${API_TAG}` y se niega a arrancar si `API_TAG` no está definida. Así, producción ejecuta exactamente la imagen probada y trazable a un commit. El despliegue automático (job `desplegar` del workflow) se describe en `docs/despliegue-automatizado.md`.
+En el servidor **no hay `build:`**: `deploy/docker-compose.prod.yml` usa `image: ghcr.io/articulaciontics/docker_sena:${API_TAG}` y se niega a arrancar si `API_TAG` no está definida. Así, producción ejecuta exactamente la imagen probada y trazable a un commit.
+
+### 9.3 Verificación desde Internet (2026-10-04)
+
+```text
+$ curl -i http://34.60.209.202:8080/health
+HTTP/1.1 200 OK
+Server: nginx/1.30.5
+{"status":"ok"}
+
+$ curl http://34.60.209.202:8080/api/status
+{"api":"ok","database":"connected","db_host":"db","db_ip":"172.18.0.2","db_name":"appdb","postgres_version":"18.6","api_hostname":"16660b3a4ebf"}
+
+$ curl http://34.60.209.202:8080/docs        → «Docker Multiservice Lab API - Swagger UI»
+$ curl --max-time 5 http://34.60.209.202:8000 → sin respuesta (correcto: la API no está expuesta)
+$ curl --max-time 5 http://34.60.209.202:5432 → sin respuesta (correcto: la BD no está expuesta)
+```
+
+### 9.4 Despliegue continuo (GitHub Actions → servidor)
+
+| Paso | Evidencia |
+|---|---|
+| Configuración | Clave SSH dedicada (`deploy_github`, con su pública en `authorized_keys`); secretos del repositorio `SERVIDOR_HOST`, `SERVIDOR_USUARIO`, `SERVIDOR_SSH_KEY`; variable `DESPLIEGUE_HABILITADO=true`; *environment* `produccion` |
+| Incidencia | La primera vez los secretos se crearon como *Variables* y no como *Secrets*: `ssh` recibió un destino vacío (`usage: ssh …`, código 255). Se agregó al workflow un paso que valida los secretos sin mostrarlos ([corrida 37225163601](https://github.com/articulacionTics/docker_SENA/actions/runs/37225163601): «Falta el secreto SERVIDOR_HOST…») y se corrigió la configuración |
+| Primer despliegue automático | [Corrida 37225015773](https://github.com/articulacionTics/docker_SENA/actions/runs/37225015773) (intento 2): job `desplegar` en ✅ success |
+| **Despliegue continuo demostrado** | El commit `f5d72ca` cambió `/health` de `{"status":"okis"}` (un cambio de prueba) a `{"status":"ok"}`. La [corrida 37225492900](https://github.com/articulacionTics/docker_SENA/actions/runs/37225492900) construyó y publicó `sha-f5d72ca` y luego, en `desplegar`: verificó los secretos ✅, ejecutó `git pull` + `docker compose pull` + `up -d` por SSH, y comprobó `/health` en el servidor ✅. **Sin entrar a la VM**, la URL pública pasó a responder `{"status":"ok"}` |
+
+El detalle del flujo, los secretos y el rollback está en `docs/despliegue-automatizado.md`.
+
+### 9.5 Apagado
+
+Después de la evaluación, eliminar la VM y las reglas de firewall en la consola de GCP para dejar el costo en cero. Antes de eliminarla, si se quieren conservar los datos: `docker compose --env-file .env -f deploy/docker-compose.prod.yml exec db pg_dump -U postgres appdb > respaldo.sql`.
 
 ## 10. Pruebas
 

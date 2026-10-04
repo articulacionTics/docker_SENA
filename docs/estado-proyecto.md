@@ -12,7 +12,7 @@
 | AA5 — Pruebas | PASS | `docs/pruebas.md`: P1–P10 en PASS |
 | GHCR (publicación manual) | PASS | `ghcr.io/articulaciontics/docker_sena:1.0.0`, paquete público, `pull` sin credenciales |
 | GitHub Actions | PASS | 4 corridas en verde, caché de 33 s → 21 s, tag `v1.0.0` publicado (`docs/despliegue-automatizado.md`) |
-| Servidor remoto | PENDING | Pendiente de realizar cuando el instructor entregue las credenciales del servidor. Procedimiento y `deploy/docker-compose.prod.yml` listos |
+| Servidor remoto | PASS | http://34.60.209.202:8080/health en Google Cloud e2-micro (Ubuntu 24.04 + Docker Engine), imagen de GHCR sin build. Despliegue continuo verificado en la corrida 37225492900. VM encendida hasta el 2026-10-06 |
 | Copia limpia | PASS | `docs/checklist-anexo-c.md` §1 |
-| Auditoría Anexo C | 8 PASS · 1 PENDING | `docs/checklist-anexo-c.md` (pendiente: despliegue remoto) |
+| Auditoría Anexo C | PASS (9 de 9) | `docs/checklist-anexo-c.md` |
 | Entrega: enlace público de Actions | PASS | https://github.com/articulacionTics/docker_SENA/actions es público (HTTP 200 sin sesión); 6 corridas en verde. Nombre y trabajo desarrollado en el README. El instructor no solicitó video |
