@@ -91,7 +91,14 @@ $ docker image inspect ... org.opencontainers.image.revision / source
 
 ### Efecto de la caché (segunda corrida)
 
-PENDIENTE: se completará con la duración de la siguiente corrida (el commit que agrega este documento).
+La segunda corrida la disparó el commit `eedc2f7`, que agregó la documentación: https://github.com/articulacionTics/docker_SENA/actions/runs/37179196305 (✅ success).
+
+| Corrida | Commit | Job `construir-y-publicar` (inicio → fin) | Duración del job |
+|---|---|---|---:|
+| 1.ª (sin caché) | `936efea` | 05:08:58Z → 05:09:31Z | **33 s** |
+| 2.ª (con caché `type=gha`) | `eedc2f7` | 05:12:09Z → 05:12:30Z | **21 s** |
+
+La segunda corrida tardó un **36 % menos**. Las capas de dependencias (el venv de la etapa *builder*) no cambiaron, así que se recuperaron de la caché en lugar de reinstalarse. Como el cambio fue solo de documentación y `docs/` está en `.dockerignore`, ni siquiera cambió el contexto de construcción.
 
 ## 4. Cómo continúa la cadena hasta producción
 
