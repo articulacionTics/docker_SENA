@@ -1,10 +1,22 @@
 # AA2 — Administración de imágenes
 
-Fecha: 2026-10-03 · Host: Ubuntu 24.04.1 (WSL2) · Docker Engine 28.0.1.
+Fecha: 2026-10-03 · Host: Ubuntu 24.04.1 (WSL2) · Primera práctica con Docker Engine 28.0.1; repetida y ampliada con **29.8.2** (ver `docs/entorno.md`, P2).
 
 Se usan **etiquetas explícitas** y nunca `latest`, para que el despliegue sea reproducible: la misma etiqueta siempre resuelve a la misma versión mayor/menor. Para fijar una imagen exacta byte a byte se puede usar el *digest* (`imagen@sha256:...`), que se registra abajo.
 
-## 1. Descarga
+## 1. Buscar y descargar
+
+```text
+$ docker search postgres --limit 5
+NAME                DESCRIPTION                                     STARS     OFFICIAL
+postgres            The PostgreSQL object-relational database sy…   15028     [OK]
+cimg/postgres                                                       9
+circleci/postgres   The PostgreSQL object-relational database sy…   35
+kasmweb/postgres    Postgres image maintained by Kasm Technologi…   6
+elestio/postgres    Postgres, verified and packaged by Elestio      2
+```
+
+Se elige la imagen marcada como **OFFICIAL**, porque la mantiene Docker y el proyecto PostgreSQL.
 
 ```bash
 docker pull postgres:18-alpine
@@ -13,13 +25,27 @@ docker pull nginx:1.30-alpine
 docker images
 ```
 
-Resultado de `docker images` (filtrado):
+`docker images` con Docker Engine 29 (almacén containerd). *DISK USAGE* es el tamaño descomprimido en disco y *CONTENT SIZE* el tamaño comprimido que se descarga:
 
 ```text
-REPOSITORY   TAG           IMAGE ID       SIZE      CREATED
-python       3.14-slim     284cda8648f5   128MB     2 days ago
-nginx        1.30-alpine   43d9d8c1f896   62.4MB    11 days ago
-postgres     18-alpine     c293117fcecd   304MB     2 weeks ago
+IMAGE                ID             DISK USAGE   CONTENT SIZE
+python:3.14-slim     c3e521df8b2b        192MB         48.7MB
+nginx:1.30-alpine    0985e772fb9f       93.6MB           27MB
+postgres:18-alpine   77f585114c32        433MB          121MB
+```
+
+Con Engine 28 (almacén clásico) las mismas imágenes reportaban 128 MB, 62.4 MB y 304 MB. Con Engine 29 la cifra es mayor porque el almacén containerd también conserva el contenido comprimido. Los *digest* son los mismos.
+
+`docker image inspect postgres:18-alpine | head -30` (extracto):
+
+```text
+"RepoTags": [ "postgres:18-alpine" ],
+"RepoDigests": [ "postgres@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873" ],
+"Created": "2026-09-17T21:29:50.207676277Z",
+"ExposedPorts": { "5432/tcp": {} },
+"Env": [ ..., "PG_MAJOR=18", "PG_VERSION=18.6", ..., "PGDATA=/var/lib/postgresql/18/docker" ],
+"Entrypoint": [ "docker-entrypoint.sh" ],
+"Cmd": [ "postgres" ]
 ```
 
 ## 2. Ficha de cada imagen
@@ -174,6 +200,98 @@ docker volume rm pgdata-practica
 
 No quedan contenedores de práctica (`web`, `pg-practica`) ni el volumen `pgdata-practica`.
 
-## 5. Imagen propia de la API (`api-app:1.0.0`)
+## 5. AA3 — Imagen propia de la API (`api-app:1.0.0`)
 
-PENDIENTE: se completará en AA3 con `docker build`, `docker images` y `docker history api-app:1.0.0`.
+### 5.1 Construcción (Dockerfile multi-etapa)
+
+El `Dockerfile` tiene dos etapas:
+
+- **builder** (`python:3.14-slim`): crea el entorno virtual `/opt/venv`, instala `app/requirements.txt` y luego desinstala `pip`.
+- **runtime** (`python:3.14-slim`): copia solo `/opt/venv` y `app/`, crea `appuser` (UID/GID 1001, sin shell de login), ejecuta `USER appuser`, `EXPOSE 8000`, `HEALTHCHECK` contra `/health` y `CMD uvicorn`.
+
+`.dockerignore` excluye `.git`, `.env`, `docs`, `__pycache__` y otros archivos que no necesita la imagen.
+
+```text
+$ docker build -t api-app:1.0.0 .
+#10 [builder 4/4] RUN python -m venv /opt/venv && /opt/venv/bin/pip install -r requirements.txt && /opt/venv/bin/pip uninstall -y pip
+#10 13.30 Successfully installed ... fastapi-0.142.2 ... psycopg-3.3.6 psycopg-binary-3.3.6 ... uvicorn-0.54.0 ...
+#10 13.63   Successfully uninstalled pip-26.2.1
+#11 [runtime 4/5] COPY --from=builder /opt/venv /opt/venv
+#12 [runtime 5/5] COPY app/ ./app/
+#13 naming to docker.io/library/api-app:1.0.0 done
+(build con BuildKit: 19 s)
+
+$ docker images | grep api-app
+api-app:1.0.0        f622e63d649f        275MB           65MB
+
+$ docker run --rm api-app:1.0.0 id
+uid=1001(appuser) gid=1001(appuser) groups=1001(appuser)
+```
+
+Comprobaciones adicionales: `/build` (la etapa builder) **no existe** en la imagen final y el venv de runtime no contiene `pip`. Con el contenedor sin base de datos, `/health` responde `{"status":"ok"}`. La API arranca aunque falten las variables de la BD y lo registra como advertencia: `No se pudo inicializar el esquema: Faltan variables de entorno: DB_NAME, DB_ADMIN_PASSWORD`.
+
+### 5.2 Capas (`docker history api-app:1.0.0`)
+
+```text
+IMAGE          CREATED          CREATED BY                                      SIZE      COMMENT
+f622e63d649f   3 seconds ago    CMD ["uvicorn" "app.main:app" "--host" "0.0.…   0B        buildkit.dockerfile.v0
+<missing>      3 seconds ago    HEALTHCHECK {Test:[CMD python -c import urll…   0B        buildkit.dockerfile.v0
+<missing>      3 seconds ago    EXPOSE [8000/tcp]                               0B        buildkit.dockerfile.v0
+<missing>      3 seconds ago    USER appuser                                    0B        buildkit.dockerfile.v0
+<missing>      3 seconds ago    COPY app/ ./app/ # buildkit                     24.6kB    buildkit.dockerfile.v0
+<missing>      3 seconds ago    COPY /opt/venv /opt/venv # buildkit             66.8MB    buildkit.dockerfile.v0
+<missing>      17 seconds ago   WORKDIR /srv                                    4.1kB     buildkit.dockerfile.v0
+<missing>      17 seconds ago   RUN /bin/sh -c groupadd --system --gid 1001 …   41kB      buildkit.dockerfile.v0
+<missing>      17 seconds ago   ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFER…   0B        buildkit.dockerfile.v0
+<missing>      17 seconds ago   LABEL org.opencontainers.image.title=docker-…   0B        buildkit.dockerfile.v0
+<missing>      2 days ago       CMD ["python3"]                                 0B        buildkit.dockerfile.v0
+<missing>      2 days ago       RUN /bin/sh -c set -eux;  for src in idle3 p…   16.4kB    buildkit.dockerfile.v0
+<missing>      2 days ago       RUN /bin/sh -c set -eux;   savedAptMark="$(a…   42MB      buildkit.dockerfile.v0
+<missing>      2 days ago       ENV PYTHON_SHA256=c2215904f02b175596dc493515…   0B        buildkit.dockerfile.v0
+<missing>      2 days ago       ENV PYTHON_VERSION=3.14.8                       0B        buildkit.dockerfile.v0
+<missing>      2 days ago       RUN /bin/sh -c set -eux;  apt-get update;  a…   13.2MB    buildkit.dockerfile.v0
+<missing>      2 days ago       ENV PATH=/usr/local/bin:/usr/local/sbin:/usr…   0B        buildkit.dockerfile.v0
+<missing>      2 weeks ago      # debian.sh --arch 'amd64' out/ 'trixie' '@1…   87.6MB    debuerreotype 0.17
+```
+
+Lectura de la tabla: las capas propias del proyecto suman **≈ 67 MB**, casi todo el venv. El resto pertenece a la imagen base `python:3.14-slim`. La capa `USER appuser` confirma que el proceso no se ejecuta como root.
+
+### 5.3 Ciclo de vida de la imagen (AA3, paso 3)
+
+```text
+$ docker tag api-app:1.0.0 api-app:latest          # etiquetar/versionar (solo práctica local)
+$ docker images api-app
+IMAGE            ID             DISK USAGE   CONTENT SIZE
+api-app:1.0.0    f622e63d649f        275MB           65MB
+api-app:latest   f622e63d649f        275MB           65MB      ← misma imagen, dos etiquetas
+api-app:single   616a57d1c5e3        780MB          206MB
+
+$ docker system df
+TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
+Images          5         0         1.381GB   1.179GB (85%)
+Containers      0         0         0B        0B
+Local Volumes   0         0         0B        0B
+Build Cache     18        0         938.5MB   591.5MB
+
+$ docker rmi api-app:single                         # eliminar la imagen que no se usa
+Untagged: api-app:single
+Deleted: sha256:616a57d1c5e35887089d0d947630773cba011662c0bece1ac12560a619c81300
+$ docker rmi api-app:latest
+Untagged: api-app:latest
+
+$ docker system df
+TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
+Images          4         0         791.1MB   588.8MB (74%)
+```
+
+### 5.4 Comparación: multi-etapa frente a una sola etapa
+
+Para comparar se construyó una imagen equivalente **sin multi-etapa** (`api-app:single`): una sola etapa sobre `python:3.14-slim` que instala `build-essential` y las dependencias con la caché de pip, y ejecuta como root. Se eliminó al terminar y no forma parte del repositorio.
+
+| Imagen | Etapas | Tamaño en disco | Tamaño comprimido (descarga) | Usuario |
+|---|---|---:|---:|---|
+| `api-app:1.0.0` | 2 (builder + runtime) | **275 MB** | **65 MB** | appuser (1001) |
+| `api-app:single` | 1 | 780 MB | 206 MB | root |
+| **Reducción** | | **−65 %** | **−68 %** | |
+
+La guía espera una imagen de «decenas de MB». La imagen comprimida que se descarga del registry pesa **65 MB**, pero en disco ocupa 275 MB, porque la base `python:3.14-slim` ya ocupa 192 MB descomprimida. Bajar de esa cifra exigiría otra base (por ejemplo, *distroless* o Alpine con musl), y eso pierde las *wheels* glibc de `psycopg[binary]`.

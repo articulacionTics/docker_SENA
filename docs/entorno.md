@@ -1,108 +1,130 @@
 # AA2 — Entorno de trabajo
 
-Fecha de verificación: 2026-10-03. Todos los valores provienen de comandos ejecutados en el equipo de trabajo.
+Equipo de **un integrante**: Lily Pardo (ficha 3602390). Los valores de este documento salen de comandos ejecutados en el equipo de trabajo. Última verificación: 2026-10-03.
 
-## 1. Resumen
+**Ruta de instalación elegida: 2B — Windows 11 + WSL2 + Ubuntu + Docker Engine** (no Docker Desktop).
+
+## 1. Diagnóstico del equipo (actividad 3.2b)
+
+Ejecutado en PowerShell:
+
+| Dato | Valor | Comando |
+|---|---|---|
+| Sistema operativo | Microsoft Windows 11 Pro, versión 10.0.26200 (build 26200), 64 bits | `winver` / `Get-CimInstance Win32_OperatingSystem` |
+| Memoria física total | 40 567 MB | `systeminfo \| findstr /C:"Memoria fisica total"` |
+| Virtualización | Hipervisor detectado; seguridad basada en virtualización en ejecución | `systeminfo \| findstr /C:"Hyper-V"` |
+| Disco C: | 393.6 GB usados · 82.3 GB libres | `Get-PSDrive C` |
+| WSL | 2.7.14.0 (kernel 6.18.33.2-2, WSLg 1.0.73.2) | `wsl --version` |
+
+Cumple los mínimos de la guía: 4 GB de RAM, 15 GB libres y virtualización habilitada.
+
+## 2. Resumen del entorno
 
 | Elemento | Valor | Comando |
 |---|---|---|
-| Sistema anfitrión | Windows 11 Pro 10.0.26200 | — |
-| WSL | 2.7.14.0 (kernel 6.18.33.2-2, WSLg 1.0.73.2) | `wsl --version` (PowerShell) |
-| Distribución usada | **Ubuntu 24.04.1 LTS (noble)**, WSL versión 2, nombre `Ubuntu` | `wsl -l -v`, `lsb_release -a` |
-| Kernel | 6.18.33.2-microsoft-standard-WSL2 | `uname -r` |
-| Arquitectura | x86_64 | `uname -a`, `docker info` |
-| Init | systemd (`/etc/wsl.conf` → `[boot] systemd=true`) | `ps -p 1 -o comm=` |
-| Docker Engine | 28.0.1 (Docker CE, paquete `docker-ce` del repositorio oficial de Docker) | `docker --version` |
-| Docker Compose | v2.33.1 (plugin `docker-compose-plugin`) | `docker compose version` |
-| Buildx | v0.21.1 | `docker buildx version` |
-| Recursos | 16 CPU · 19.34 GiB RAM · 931 GB libres en `/` | `docker info`, `df -h ~` |
+| Distribución usada | **Ubuntu 24.04.1 LTS (noble)** en WSL **versión 2**, nombre `Ubuntu` | `wsl -l -v`, `lsb_release -a` |
+| Kernel | 6.18.33.2-microsoft-standard-WSL2, x86_64 | `uname -a` |
+| systemd | Activo (`/etc/wsl.conf` → `[boot] systemd=true`) | `ps -p 1 -o comm=` |
+| Docker Engine | **29.8.2** (Docker CE, repositorio oficial `download.docker.com`) | `docker --version` |
+| Docker Compose | **v5.6.0** (plugin `docker-compose-plugin`, subcomando `docker compose`) | `docker compose version` |
+| Buildx / BuildKit | v0.37.1 | `docker buildx version` |
+| containerd | 2.3.6 | `dpkg -l containerd.io` |
+| Almacén de imágenes | containerd snapshotter (`overlayfs`), el valor por defecto de Engine 29 en una instalación limpia | `docker info` |
 | Cgroups | v2, driver systemd | `docker info` |
-| Contexto Docker | `default` → `unix:///var/run/docker.sock` (Engine local, **no** Docker Desktop) | `docker context ls` |
-| Ruta del proyecto | `/home/liya/docker-multiservice-lab` (sistema de archivos Linux, no `/mnt/c`) | `pwd` |
+| Contexto Docker | `default *` → `unix:///var/run/docker.sock` | `docker context ls` |
+| Ruta del proyecto | `/mnt/c/LProyectos/cl/contenedor` (ver la decisión D1, §5) | `pwd` |
 | Git | 2.43.0 | `git --version` |
 
-## 2. Salidas de verificación
+> La guía se refiere a «Compose v2» porque es la generación de Compose que funciona como plugin (`docker compose`, con espacio) y reemplazó al antiguo `docker-compose` v1. El plugin oficial continuó su numeración y hoy reporta v5.6.0; el subcomando y el formato del archivo son los mismos.
+
+## 3. Salidas de verificación (guía AA2, paso 3)
 
 ```text
 $ docker --version
-Docker version 28.0.1, build 068a01e
+Docker version 29.8.2, build 7fc2dff
 
 $ docker compose version
-Docker Compose version v2.33.1
+Docker Compose version v5.6.0
 
-$ docker run --rm hello-world
-Hello from Docker!
-This message shows that your installation appears to be working correctly.
-```
+$ docker info | head -20
+Client: Docker Engine - Community
+ Version:    29.8.2
+ Context:    default
+ Debug Mode: false
+ Plugins:
+  buildx: Docker Buildx (Docker Inc.)
+    Version:  v0.37.1
+    Path:     /usr/libexec/docker/cli-plugins/docker-buildx
+  compose: Docker Compose (Docker Inc.)
+    Version:  v5.6.0
+    Path:     /usr/libexec/docker/cli-plugins/docker-compose
 
-`docker info` (sección *Server*, recortada):
-
-```text
 Server:
- Containers: 5
+ Containers: 0
   Running: 0
   Paused: 0
-  Stopped: 5
- Images: 50
- Server Version: 28.0.1
- Storage Driver: overlay2
-  Backing Filesystem: extfs
+  Stopped: 0
+ Images: 4
+ Server Version: 29.8.2
+ Storage Driver: overlayfs
+  driver-type: io.containerd.snapshotter.v1
  Logging Driver: json-file
  Cgroup Driver: systemd
  Cgroup Version: 2
- Plugins:
-  Volume: local
-  Network: bridge host ipvlan macvlan null overlay
- Swarm: inactive
- Default Runtime: runc
- runc version: v1.2.4-0-g6c52b3f
- Security Options:
-  seccomp
-   Profile: builtin
-  cgroupns
- Kernel Version: 6.18.33.2-microsoft-standard-WSL2
- Operating System: Ubuntu 24.04.1 LTS
- OSType: linux
- Architecture: x86_64
- CPUs: 16
- Total Memory: 19.34GiB
- Docker Root Dir: /var/lib/docker
+
+$ docker info --format '{{.OperatingSystem}}'
+Ubuntu 24.04.1 LTS          ← el daemon es Docker Engine dentro de Ubuntu (no "Docker Desktop")
+
+$ docker context ls
+NAME        DESCRIPTION                               DOCKER ENDPOINT               ERROR
+default *   Current DOCKER_HOST based configuration   unix:///var/run/docker.sock
+
+$ docker run --rm hello-world
+Hello from Docker!
 ```
 
-`Operating System: Ubuntu 24.04.1 LTS` confirma que el daemon es Docker Engine dentro de Ubuntu. Con Docker Desktop se mostraría `Docker Desktop`.
+## 4. Instalación realizada (apartados 2B + 2A de la guía)
 
-## 3. Instalación utilizada
-
-Docker Engine se instaló dentro de Ubuntu desde el repositorio oficial `download.docker.com`. Paquetes presentes (`dpkg -l | grep docker`):
-
-```text
-docker-ce 5:28.0.1-1~ubuntu.24.04~noble
-docker-ce-cli 5:28.0.1-1~ubuntu.24.04~noble
-docker-buildx-plugin 0.21.1-1~ubuntu.24.04~noble
-docker-compose-plugin 2.33.1-1~ubuntu.24.04~noble
-containerd.io 1.7.25-1
-```
-
-El usuario `liya` pertenece al grupo `docker`, así que no necesita `sudo`. El servicio está gestionado por systemd (`systemctl is-active docker` → `active`).
-
-Procedimiento de referencia para una instalación limpia en Ubuntu (documentación oficial de Docker):
+1. **WSL2:** `wsl --version` → 2.7.14.0, con la distribución `Ubuntu` en VERSION 2 y systemd habilitado en `/etc/wsl.conf`.
+2. **Docker Engine dentro de Ubuntu** desde el repositorio oficial (`/etc/apt/sources.list.d/docker.list`). La actualización a la serie 29 se hizo con:
 
 ```bash
-sudo apt-get update && sudo apt-get install -y ca-certificates curl
-sudo install -m 0755 -d /etc/apt/keyrings
-sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" | sudo tee /etc/apt/sources.list.d/docker.list
-sudo apt-get update
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-sudo usermod -aG docker $USER   # cerrar y reabrir la sesión
+sudo apt remove -y docker-compose docker-compose-v2 docker-doc podman-docker   # paquetes no oficiales
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin docker-ce-rootless-extras
+sudo systemctl enable --now docker
+sudo usermod -aG docker $USER      # el usuario liya ya pertenecía al grupo docker
 ```
 
-## 4. Problemas encontrados y soluciones
+3. **Herramientas dentro de Ubuntu:** Git 2.43.0, con el remoto por SSH (`git@github-articulacion:articulacionTics/docker_SENA.git`).
+
+Paquetes Docker instalados tras la actualización (`dpkg -l | grep -E 'docker|containerd'`):
+
+```text
+containerd.io              2.3.6-1~ubuntu.24.04~noble
+docker-buildx-plugin       0.37.1-1~ubuntu.24.04~noble
+docker-ce                  5:29.8.2-1~ubuntu.24.04~noble
+docker-ce-cli              5:29.8.2-1~ubuntu.24.04~noble
+docker-ce-rootless-extras  5:29.8.2-1~ubuntu.24.04~noble
+docker-compose-plugin      5.6.0-1~ubuntu.24.04~noble
+```
+
+Control del motor en este entorno: arranca solo al abrir Ubuntu (systemd) y se detiene con `wsl --shutdown` desde PowerShell.
+
+## 5. Problemas encontrados, decisiones y soluciones
 
 | # | Problema | Causa | Impacto | Solución aplicada |
 |---|---|---|---|---|
-| 1 | La distribución WSL por defecto (`Ubuntu-20.04`) no tiene `docker compose` (`'compose' is not a docker command`). | Solo tiene `docker.io` 26.1.3 de los repositorios de Ubuntu, sin el plugin Compose v2. | No permite ejecutar el proyecto. | Se usa la distribución `Ubuntu` (24.04) de forma explícita: `wsl -d Ubuntu`. |
-| 2 | Docker Desktop está instalado en Windows (distro `docker-desktop`, `docker.exe` en el PATH de Windows). | Instalación previa. | Riesgo de usar el daemon equivocado. | Docker Desktop permanece **detenido**. Dentro de Ubuntu, `which docker` → `/usr/bin/docker` (va antes que `/mnt/c/...`) y el contexto es `default` → `unix:///var/run/docker.sock`. |
-| 3 | `docker info` muestra advertencias `Plugin "/usr/local/lib/docker/cli-plugins/docker-*" is not valid`. | Enlaces simbólicos rotos que dejó la integración WSL de Docker Desktop. | Solo son advertencias. Compose y Buildx funcionan desde los paquetes `docker-*-plugin`. | Se documentan. Corrección opcional: `sudo rm /usr/local/lib/docker/cli-plugins/docker-*` (verificar antes con `ls -l` que sean enlaces rotos). |
-| 4 | Junto a `docker-ce` siguen instalados `docker.io` 26.1.3 y `docker-compose` 1.29.2 (Compose v1). | Instalaciones anteriores desde los repositorios de Ubuntu. | El binario activo es `docker-ce` 28.0.1. Ejecutar `docker-compose` (con guion) llamaría a la versión v1, que es obsoleta. | Se usa siempre `docker compose` (v2, con espacio). |
-| 5 | En `postgres:18-alpine` el montaje `-v vol:/var/lib/postgresql/data` hace que el contenedor termine con `Exited (1)`. | Desde PostgreSQL 18, la imagen oficial usa `PGDATA=/var/lib/postgresql/18/docker` y declara `VOLUME /var/lib/postgresql`. | El montaje clásico de versiones ≤17 no funciona. | Se verificaron alternativas (ver `docs/imagenes.md` §4). |
+| P1 | La distribución por defecto (`Ubuntu-20.04`) no tiene `docker compose`. | Solo tiene `docker.io` 26.1 de Ubuntu, sin el plugin. | No permite ejecutar el proyecto. | Se usa la distribución `Ubuntu` (24.04) de forma explícita: `wsl -d Ubuntu`. |
+| P2 | Docker Engine **28.0.1** instalado. | Instalación anterior. | La guía exige la serie 29: la 28 quedó sin soporte en mayo de 2026. | Actualizado a **29.8.2** desde el repositorio oficial (§4). |
+| P3 | Paquetes no oficiales junto a Docker CE: `docker-compose` 1.29 (v1) y restos de `docker.io`. | Instalaciones antiguas desde los repositorios de Ubuntu. | Riesgo de usar Compose v1 (`docker-compose`). | Retirados (paso 1 del apartado 2A). |
+| P4 | Docker Desktop instalado en Windows. Su integración WSL dejó enlaces rotos en `/usr/local/lib/docker/cli-plugins/` (→ `/mnt/wsl/docker-desktop/...`). | Instalación previa de Docker Desktop. | `docker build` usaba el **builder antiguo** (obsoleto) porque el enlace roto `docker-buildx` ocultaba el plugin válido, y `docker info` mostraba 11 advertencias. | Enlaces rotos eliminados (`sudo find /usr/local/lib/docker/cli-plugins -xtype l -delete`) e integración WSL de Desktop desactivada. Verificado: BuildKit activo y 0 advertencias. **Docker Desktop no debe estar abierto** mientras se trabaja: si arranca, publica sus propios contenedores en los puertos del host (P8). |
+| P5 | Los contenedores no resolvían nombres DNS (`Temporary failure in name resolution`) y `pip install` fallaba dentro de `docker build`. | WSL2 con túnel DNS: Ubuntu usa `nameserver 10.255.255.254`, accesible solo desde el propio WSL, y los contenedores heredan ese valor. | No se podía construir la imagen de la API. | `/etc/docker/daemon.json` → `{ "dns": ["8.8.8.8", "1.1.1.1"] }` + `sudo systemctl restart docker`. Verificado: HTTPS 200 a pypi.org desde un contenedor. |
+| P6 | En las redes definidas por el usuario, los contenedores no tienen salida a Internet (el ping al gateway funciona, pero el TCP externo se agota). | Probablemente falta la regla NAT (MASQUERADE) de esas redes en este WSL. La revisión requiere `sudo iptables`. | **Ninguno para el proyecto:** `db`, `api` y `proxy` solo se comunican entre sí por la red `interna`, y `docker build` usa la red por defecto, que sí tiene salida. | Documentado. Se revisará si algún servicio necesita salir a Internet. |
+| P7 | Al ejecutar `sudo apt purge docker.io` el script de purga del paquete **borró `/var/lib/docker`** (`Nuking /var/lib/docker ...`): se perdieron las imágenes, los contenedores y los volúmenes de **otros proyectos de prueba** de esta distribución. | La guía indica `apt remove`, que conserva los datos; se usó `purge`, que ejecuta el `postrm` de `docker.io`. | Datos de prueba de otros proyectos (sin valor según la usuaria). Este proyecto no se afectó: su código está en Git. Engine 29 arrancó sobre un directorio vacío y por eso usa el almacén containerd. | **Lección:** para retirar `docker.io` usar `apt remove`, nunca `purge`, si hay datos en `/var/lib/docker`. Respaldar antes los volúmenes (`docker run --rm -v vol:/d -v $PWD:/b alpine tar czf /b/vol.tgz -C /d .`). |
+| P8 | `failed to bind host port 0.0.0.0:8080 / 5432: address already in use`. | Docker Desktop se abrió y levantó contenedores de otro proyecto publicados en 8080 y 5432. Todas las distribuciones WSL2 y Windows comparten `localhost`. | Impide levantar el proxy (8080). | Cerrar Docker Desktop (*Quit*). Comprobación: `Get-NetTCPConnection -State Listen -LocalPort 8080` no debe mostrar `com.docker.backend`. |
+| D1 | **Decisión:** el proyecto está en `/mnt/c/LProyectos/cl/contenedor` y no en `/home/<usuario>`. | Preferencia de la usuaria: tener los archivos en una carpeta de Windows. | La guía (p. 12, Anexo B) desaconseja `/mnt/c`: la E/S es más lenta, `/mnt/c` se monta sin `metadata` (todos los archivos aparecen con permisos 777) y hay riesgo de CRLF si se edita con herramientas de Windows. | Mitigaciones: `.gitattributes` (`* text=auto eol=lf`), `git config core.fileMode false`, edición con VS Code y comprobación `grep -rlI $'\r'` antes de cada commit. Verificado: el build (19 s) y el montaje `:ro` de `nginx/default.conf` funcionan desde `/mnt/c`. |
+
+## 6. Otros sistemas operativos (referencia)
+
+Este equipo tiene un solo integrante (Windows + WSL2). Para Ubuntu nativo (apartado 2A) y macOS con Colima (2C), el procedimiento de la guía queda resumido en el [README](../README.md#instalación-del-motor) y produce **el mismo Docker Engine y los mismos comandos**. Por eso el proyecto se comporta igual en los tres (requisitos RI-OS-01 a RI-OS-03 en `docs/requisitos.md`).
