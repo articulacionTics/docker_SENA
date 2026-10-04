@@ -191,6 +191,35 @@ pgdata-practica local /var/lib/docker/volumes/pgdata-practica/_data
 
 **Conclusión:** el dato sobrevivió a la eliminación y recreación del contenedor porque está en el volumen nombrado. La opción C es la más limpia: un solo volumen y compatible con `pg_upgrade`.
 
+### Práctica con el comando de la guía (Docker Engine 29.8.2)
+
+Se repitió el paso 5 de AA2 con los parámetros de la guía. Solo cambia el punto de montaje, por lo demostrado en los experimentos A a C:
+
+```text
+$ docker run -d --name db-app -e POSTGRES_PASSWORD=claveAdmin123 -e POSTGRES_DB=appdb -p 5432:5432 \
+    -v pgdata-practica:/var/lib/postgresql postgres:18-alpine -c shared_buffers=32MB -c max_connections=20
+b3faddc39a51
+$ docker ps
+NAMES     IMAGE                STATUS         PORTS
+db-app    postgres:18-alpine   Up 3 seconds   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+$ docker logs db-app | tail -5
+... LOG:  listening on IPv4 address "0.0.0.0", port 5432
+... LOG:  listening on IPv6 address "::", port 5432
+... LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+... LOG:  database system was shut down at 2026-10-04 04:44:23 UTC
+... LOG:  database system is ready to accept connections
+$ docker exec db-app psql -U postgres -d appdb -tAc "SHOW shared_buffers;" -c "SHOW max_connections;"
+32MB
+20
+$ docker run -d --name web -p 8080:80 nginx:1.30-alpine
+$ curl http://localhost:8080
+<title>Welcome to nginx!</title>
+$ docker rm -f web db-app
+$ docker volume rm pgdata-practica
+```
+
+El puerto 5432 se publicó **solo para esta práctica**. En la solución final (`docker-compose.yml`) la base de datos no publica ningún puerto.
+
 ### Limpieza
 
 ```bash
