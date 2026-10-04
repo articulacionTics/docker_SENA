@@ -2,7 +2,7 @@
 
 [![Publicar imagen](https://github.com/articulacionTics/docker_SENA/actions/workflows/publicar-imagen.yml/badge.svg)](https://github.com/articulacionTics/docker_SENA/actions/workflows/publicar-imagen.yml)
 
-**Autora:** Lily Pardo · **Ficha:** 3602390 · SENA, Centro de Comercio y Servicios, Regional Tolima
+**Autora:** Lily Pardo · **Ficha:** 3602390 · SENA, Centro de Comercio y Servicios, Regional Tolima · **GitHub:** [@Lilypar59](https://github.com/Lilypar59)
 **Programa:** Despliegue de aplicaciones y servicios en contenedores Docker (22810024) · **Competencia:** 220501086
 
 ## 🔗 Enlaces públicos (entrega)
@@ -446,7 +446,10 @@ El estado verificado de cada criterio está en [`docs/checklist-anexo-c.md`](doc
 
 ## Autora y trabajo desarrollado
 
-**Lily Pardo** · Ficha **3602390** · SENA, Centro de Comercio y Servicios, Regional Tolima · GitHub: [articulacionTics](https://github.com/articulacionTics)
+**Lily Pardo** · Ficha **3602390** · SENA, Centro de Comercio y Servicios, Regional Tolima
+
+- **Perfil personal de GitHub:** [@Lilypar59](https://github.com/Lilypar59)
+- Cuenta donde se aloja el repositorio del proyecto: [articulacionTics](https://github.com/articulacionTics)
 
 Proyecto desarrollado individualmente (equipo de un integrante).
 
