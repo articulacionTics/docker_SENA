@@ -14,6 +14,19 @@ Es una aplicación web multiservicio, deliberadamente sencilla, desplegada con *
 
 La imagen de la API se publica automáticamente en **GHCR** con **GitHub Actions** cada vez que un cambio llega a `main`.
 
+## Inicio rápido (evaluación del instructor)
+
+Con Docker Engine instalado (ver [Instalación del motor](#instalación-del-motor)):
+
+```bash
+git clone https://github.com/articulacionTics/docker_SENA.git
+cd docker_SENA
+cp .env.example .env
+docker compose up -d --build
+```
+
+Abra http://localhost:8080/health en el navegador; debe ver `{"status":"ok"}`. Lo que debe aparecer en cada paso está en [Verificación: qué verá al ejecutarlo](#verificación-qué-verá-al-ejecutarlo), y la forma de entrega y su revisión en [Entrega del proyecto](#entrega-del-proyecto-según-la-guía).
+
 ## Arquitectura
 
 ![Arquitectura](docs/arquitectura.png)
@@ -137,38 +150,109 @@ docker compose up -d --build
 
 Compose construye la imagen de la API y arranca **db**. Cuando db está *healthy* arranca **api**, y cuando api está *healthy* arranca **proxy**. Tarda unos 30 a 40 segundos la primera vez.
 
-## Verificación
+## Verificación: qué verá al ejecutarlo
 
-```bash
-docker compose ps
+Los ejemplos siguientes son **salidas reales** de este proyecto (Docker Engine 29.8.2, 2026-10-04). Los identificadores (`api_hostname`, IP interna, `id` de las notas, fechas) cambian en cada equipo y en cada arranque.
+
+### 1. Al levantar la solución
+
+```text
+$ docker compose up -d --build
+ Image api-app:1.0.0 Built
+ Volume docker-sena_pgdata Created
+ Network docker-sena_interna Created
+ Container docker-sena-db-1 Started
+ Container docker-sena-db-1 Healthy
+ Container docker-sena-api-1 Started
+ Container docker-sena-api-1 Healthy
+ Container docker-sena-proxy-1 Started
 ```
 
-Resultado esperado: tres servicios `Up`; `db` y `api` con `(healthy)`; solo `proxy` con `0.0.0.0:8080->80/tcp`.
+El orden es deliberado: **db** → (*healthy*) → **api** → (*healthy*) → **proxy**.
 
-```bash
-curl http://localhost:8080/health
+### 2. Estado de los servicios
+
+```text
+$ docker compose ps
+NAME                  IMAGE                STATUS                    PORTS
+docker-sena-api-1     api-app:1.0.0        Up 6 seconds (healthy)    8000/tcp
+docker-sena-db-1      postgres:18-alpine   Up 16 seconds (healthy)   5432/tcp
+docker-sena-proxy-1   nginx:1.30-alpine    Up Less than a second     0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
 ```
 
-```json
-{"status":"ok"}
-```
+Fíjese en que solo **proxy** tiene `0.0.0.0:8080->…`. `api` (8000) y `db` (5432) muestran el puerto interno sin publicar: **no son accesibles desde el host**.
 
-```bash
-curl http://localhost:8080/api/status
-```
+### 3. En el navegador (Windows, Linux o macOS)
 
-```json
-{"api":"ok","database":"connected","db_host":"db","db_ip":"172.18.0.2","db_name":"appdb","postgres_version":"18.6", "...": "..."}
-```
-
-| Endpoint (a través de `localhost:8080`) | Descripción |
+| Abra esta URL | Debe ver |
 |---|---|
-| `GET /health` | Estado del proceso de la API |
-| `GET /api/status` | Resuelve `db` en la red interna y consulta PostgreSQL |
-| `GET /api/notas` / `POST /api/notas` `{"texto": "..."}` | Datos de ejemplo para la prueba de persistencia |
-| `GET /docs` | Documentación interactiva (OpenAPI) |
+| http://localhost:8080/health | `{"status":"ok"}` |
+| http://localhost:8080/api/status | JSON con `"database":"connected"` y `"postgres_version":"18.6"` |
+| http://localhost:8080/docs | Página **«Docker Multiservice Lab API - Swagger UI»** con los endpoints `/health`, `/api/status` y `/api/notas`. Desde ahí puede probar `POST /api/notas` (*Try it out* → `{"texto": "mi nota"}` → *Execute*) |
+| http://localhost:8080/api/notas | Lista JSON de las notas guardadas |
+| http://localhost:8000 · http://localhost:5432 | **No cargan**, y es lo correcto: la API y la BD no están expuestas |
 
-Otras comprobaciones: `docker compose exec api id` → `uid=1001(appuser)`; `docker compose logs -f api`; `docker stats`. Todas las pruebas con sus salidas están en [`docs/pruebas.md`](docs/pruebas.md).
+En Windows, abra las URL en el navegador normal de Windows: WSL2 reenvía el puerto 8080 automáticamente.
+
+### 4. Desde la terminal
+
+```text
+$ curl http://localhost:8080/health
+{"status":"ok"}
+
+$ curl -s http://localhost:8080/api/status | python3 -m json.tool
+{
+    "api": "ok",
+    "database": "connected",
+    "db_host": "db",
+    "db_ip": "172.18.0.2",
+    "db_name": "appdb",
+    "postgres_version": "18.6",
+    "api_hostname": "6e53f68b938e"
+}
+```
+
+`db_host: "db"` y `db_ip: "172.18.x.x"` demuestran que la API encuentra la base de datos **por nombre de servicio** en la red interna.
+
+Guardar y leer una nota:
+
+```text
+$ curl -X POST -H 'Content-Type: application/json' -d '{"texto":"hola desde el README"}' http://localhost:8080/api/notas
+{"id":4,"texto":"hola desde el README"}
+
+$ curl http://localhost:8080/api/notas
+[{"id":1,"texto":"dato persistente AA5","creado_en":"2026-10-04T04:55:43.073540+00:00"}, ..., {"id":4,"texto":"hola desde el README","creado_en":"2026-10-04T16:44:30.703858+00:00"}]
+```
+
+Respuestas de error esperadas:
+
+| Petición | Respuesta |
+|---|---|
+| `GET /no-existe` | `404 Not Found` · `{"detail":"Not Found"}` |
+| `POST /api/notas` con `{"texto": ""}` | `422 Unprocessable Entity` (validación: el texto debe tener entre 1 y 200 caracteres) |
+
+### 5. Registros del proxy (`docker compose logs proxy`)
+
+```text
+proxy-1  | 172.18.0.1 - - [04/Oct/2026:16:44:30 +0000] "POST /api/notas HTTP/1.1" 201 39 "-" "curl/8.5.0" "-"
+proxy-1  | 172.18.0.1 - - [04/Oct/2026:16:44:30 +0000] "GET /api/notas HTTP/1.1" 200 333 "-" "curl/8.5.0" "-"
+proxy-1  | 172.18.0.1 - - [04/Oct/2026:16:44:30 +0000] "GET /no-existe HTTP/1.1" 404 22 "-" "curl/8.5.0" "-"
+proxy-1  | 172.18.0.1 - - [04/Oct/2026:16:44:30 +0000] "POST /api/notas HTTP/1.1" 422 145 "-" "curl/8.5.0" "-"
+```
+
+Cada petición pasa por Nginx antes de llegar a la API.
+
+### 6. Otras comprobaciones
+
+| Comando | Resultado esperado |
+|---|---|
+| `docker compose exec api id` | `uid=1001(appuser) gid=1001(appuser) groups=1001(appuser)` (sin root) |
+| `docker compose exec api python -c "import socket; print(socket.gethostbyname('db'))"` | Una IP privada, p. ej. `172.18.0.2` |
+| `docker compose port db 5432` | `:0` (sin puerto publicado) |
+| `curl --max-time 3 http://localhost:5432` | Sin respuesta |
+| `docker stats --no-stream` | Unos 80 MiB en total (proxy ≈ 14 MiB, api ≈ 49 MiB, db ≈ 18 MiB) |
+
+Todas las pruebas con sus salidas completas están en [`docs/pruebas.md`](docs/pruebas.md).
 
 ## Detener servicios
 
@@ -251,6 +335,68 @@ El procedimiento, el job `desplegar` del workflow y el estado del despliegue est
 | `DEPRECATED: The legacy builder is deprecated` | Enlaces rotos de Docker Desktop en `/usr/local/lib/docker/cli-plugins` | `sudo find /usr/local/lib/docker/cli-plugins -xtype l -delete` |
 | El contenedor `db` termina con `Exited (1)` y menciona `/var/lib/postgresql/data` | Volumen montado en la ruta de PostgreSQL ≤ 17 | Montar en `/var/lib/postgresql` (como en este repositorio) |
 | `docker context ls` no marca `default` | El cliente apunta a Docker Desktop | `docker context use default` y desactivar la integración WSL de Docker Desktop |
+
+## Entrega del proyecto (según la guía)
+
+Según la guía GFPI-F-135 (sección 4 y Anexo C), **el único entregable calificable es este repositorio de GitHub**, evaluado al finalizar la semana 5 junto con el **video de demostración**.
+
+### Cómo se entrega
+
+1. Al cerrar la semana 5, publique en el **aula virtual** el enlace del repositorio: **https://github.com/articulacionTics/docker_SENA**.
+2. Adjunte o enlace el **video de demostración** de 3 a 5 minutos (ver más abajo).
+3. El repositorio debe ser **público**, igual que el paquete de GHCR, para que el instructor pueda clonarlo y descargar la imagen sin credenciales.
+
+### Cómo lo revisa el instructor
+
+El instructor **clona el repositorio, ejecuta `docker compose up -d --build`** (ver [Inicio rápido](#inicio-rápido-evaluación-del-instructor)) y verifica los 9 criterios del Anexo C:
+
+| # | Criterio del Anexo C | Dónde se demuestra |
+|---|---|---|
+| 1 | La solución se levanta con un solo comando desde una copia limpia | `git clone` → `cp .env.example .env` → `docker compose up -d --build` → http://localhost:8080 ([prueba realizada](docs/checklist-anexo-c.md#1-prueba-desde-copia-limpia-simulación-del-instructor)) |
+| 2 | Matriz de requisitos de infraestructura y diagrama de arquitectura | [`docs/requisitos.md`](docs/requisitos.md) (RI-xx con criterio de aceptación) · [`docs/arquitectura.png`](docs/arquitectura.png) |
+| 3 | Entorno de cada integrante e instalación de Docker Engine | [`docs/entorno.md`](docs/entorno.md) (SO, ruta 2B/WSL2, `docker --version`, `docker compose version`) |
+| 4 | Imagen de la API con Dockerfile multi-etapa y usuario sin privilegios | [`Dockerfile`](Dockerfile) · `docker history` en [`docs/imagenes.md`](docs/imagenes.md) |
+| 5 | Tres servicios en Compose con red interna; solo el proxy expone puerto | [`docker-compose.yml`](docker-compose.yml) · `docker compose ps` |
+| 6 | Persistencia de PostgreSQL mediante un volumen | `down` + `up` conservan los datos ([`docs/pruebas.md`](docs/pruebas.md) P5) |
+| 7 | Imagen publicada en un registry | [Paquete en GHCR](https://github.com/articulacionTics/docker_SENA/pkgs/container/docker_sena) |
+| 8 | README, manual técnico y despliegue remoto | Este README · [`docs/manual-tecnico.md`](docs/manual-tecnico.md) (arquitectura, pruebas, propuesta de escalamiento) |
+| 9 | Publicación automática al integrar cambios en `main` | [`.github/workflows/`](.github/workflows/publicar-imagen.yml) · [pestaña Actions](https://github.com/articulacionTics/docker_SENA/actions) · [`docs/despliegue-automatizado.md`](docs/despliegue-automatizado.md) |
+
+El estado verificado de cada criterio está en [`docs/checklist-anexo-c.md`](docs/checklist-anexo-c.md).
+
+### Evidencias por actividad
+
+| Actividad | Evidencia en el repositorio |
+|---|---|
+| AA1 — Requisitos y arquitectura | `docs/requisitos.md`, `docs/arquitectura.png` |
+| AA2 — Entorno e imágenes base | `docs/entorno.md`, `docs/imagenes.md` |
+| AA3 — Imagen propia con Dockerfile | `Dockerfile`, `.dockerignore`, `app/`, `docs/imagenes.md` §5 |
+| AA4 — Orquestación con Compose y redes | `docker-compose.yml`, `nginx/default.conf` |
+| AA5 — Validación, publicación y documentación | `docs/pruebas.md`, `.github/workflows/publicar-imagen.yml`, `docs/despliegue-automatizado.md`, `docs/manual-tecnico.md`, release `v1.0.0` |
+| Transferencia — Servidor remoto | `deploy/docker-compose.prod.yml`, `docs/manual-tecnico.md` §9 y §11 |
+| Desempeño | Historial de commits del repositorio y corridas de GitHub Actions |
+
+### Lista de verificación antes de entregar
+
+- [x] `docker compose up -d --build` funciona desde una copia limpia.
+- [x] `.env` **no** está en el repositorio; solo `.env.example`.
+- [x] La pestaña **Actions** muestra corridas en verde.
+- [x] El paquete de GHCR es **público** y tiene etiquetas inmutables (`sha-…`, `1.0.0`).
+- [x] Etiqueta `v1.0.0` publicada.
+- [ ] *Release* `v1.0.0` creado en GitHub (*Releases → Draft a new release*).
+- [ ] Despliegue en el servidor remoto. Pendiente: el instructor debe entregar las credenciales.
+- [ ] Video de demostración grabado. Enlace: _(agregar aquí)_.
+
+### Guion sugerido para el video (3 a 5 minutos)
+
+1. Repositorio en GitHub: estructura, README y la pestaña Actions en verde (≈ 30 s).
+2. `git clone` → `cp .env.example .env` → `docker compose up -d --build` (≈ 60 s).
+3. `docker compose ps`: tres servicios y solo el proxy con puerto publicado (≈ 20 s).
+4. Navegador: `/health`, `/api/status` y `/docs`; crear una nota (≈ 40 s).
+5. Persistencia: `docker compose down` → `docker compose up -d` → la nota sigue ahí (≈ 40 s).
+6. Aislamiento: `curl localhost:5432` y `localhost:8000` no responden; `docker compose exec api id` → uid 1001 (≈ 30 s).
+7. Paquete en GHCR y `docker pull ghcr.io/articulaciontics/docker_sena:1.0.0` (≈ 20 s).
+8. Despliegue remoto, si el servidor está disponible (≈ 30 s).
 
 ## Autores
 
