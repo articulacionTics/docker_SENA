@@ -6,7 +6,7 @@
 |---|---|---|
 | Fase 0 — Entorno | PASS | WSL 2.7.14.0 · Ubuntu 24.04.1 LTS · Docker Engine 28.0.1 · Compose v2.33.1 · `docker run --rm hello-world` OK. El detalle se documentará en `docs/entorno.md` (AA2). |
 | AA1 — Requisitos y arquitectura | PASS | `docs/requisitos.md` (RI-01…RI-14, RI-OS-01…03, componentes, trazabilidad) y `docs/arquitectura.png` |
-| AA2 — Docker Engine e imágenes | PENDING | |
+| AA2 — Docker Engine e imágenes | PASS | `docs/entorno.md`, `docs/imagenes.md`: 3 imágenes descargadas e inspeccionadas; prácticas con PostgreSQL (persistencia verificada) y Nginx (HTTP 200); entorno limpio |
 | AA3 — API + Dockerfile | PENDING | |
 | AA4 — Compose + Nginx + PostgreSQL | PENDING | |
 | AA5 — Pruebas | PENDING | |
