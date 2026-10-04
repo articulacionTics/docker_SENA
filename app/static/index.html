@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Docker Multiservice Lab · SENA</title>
+  <style>
+    :root {
+      --bg: #f6f8fb; --card: #ffffff; --text: #0f172a; --muted: #475569; --line: #e2e8f0;
+      --brand: #39a900; --brand-soft: #e8f6dd; --ok: #15803d; --ok-bg: #dcfce7; --bad: #b91c1c; --bad-bg: #fee2e2;
+      --proxy: #16a34a; --api: #4f46e5; --db: #db2777; --vol: #a16207;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0b1220; --card: #111a2e; --text: #e5e7eb; --muted: #94a3b8; --line: #1f2a44;
+              --brand-soft: #16301a; --ok-bg: #12301f; --bad-bg: #3a1414; }
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+           background: var(--bg); color: var(--text); line-height: 1.5; }
+    header { background: linear-gradient(135deg, #2f8a00, var(--brand)); color: #fff; padding: 40px 16px 32px; }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+    header .wrap { padding: 0; }
+    .tag { display: inline-block; background: rgba(255,255,255,.18); padding: 4px 10px; border-radius: 999px; font-size: 13px; }
+    h1 { margin: 12px 0 6px; font-size: clamp(26px, 4vw, 38px); }
+    header p { margin: 0; opacity: .95; }
+    main { padding: 28px 0 40px; }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+    .card h2 { margin: 0 0 12px; font-size: 18px; }
+    .status { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; background: #94a3b8; flex: none; }
+    .ok .dot { background: var(--ok); box-shadow: 0 0 0 4px var(--ok-bg); }
+    .bad .dot { background: var(--bad); box-shadow: 0 0 0 4px var(--bad-bg); }
+    dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 14px 0 0; font-size: 14px; }
+    dt { color: var(--muted); } dd { margin: 0; font-family: Consolas, "SFMono-Regular", monospace; word-break: break-all; }
+    .arch { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 4px; }
+    .node { border: 2px solid; border-radius: 10px; padding: 8px 12px; font-size: 14px; font-weight: 600; background: var(--card); }
+    .node small { display: block; font-weight: 400; color: var(--muted); }
+    .arrow { color: var(--muted); font-size: 18px; }
+    .n-client { border-color: var(--muted); } .n-proxy { border-color: var(--proxy); }
+    .n-api { border-color: var(--api); } .n-db { border-color: var(--db); } .n-vol { border-color: var(--vol); border-style: dashed; }
+    .note { font-size: 13px; color: var(--muted); margin-top: 10px; }
+    ul.links { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+    ul.links a { display: flex; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--line);
+                 border-radius: 10px; text-decoration: none; color: var(--text); }
+    ul.links a:hover { border-color: var(--brand); background: var(--brand-soft); }
+    code { font-family: Consolas, "SFMono-Regular", monospace; font-size: 13px; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .pills { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pill { border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 13px; }
+    .full { grid-column: 1 / -1; }
+    footer { border-top: 1px solid var(--line); padding: 18px 0; color: var(--muted); font-size: 13px; text-align: center; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <span class="tag">SENA · Programa 22810024 · Competencia 220501086</span>
+      <h1>Docker Multiservice Lab</h1>
+      <p>Despliegue de aplicaciones y servicios en contenedores Docker: Nginx → API FastAPI → PostgreSQL</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="grid">
+      <section class="card" id="estado">
+        <h2>Estado en vivo</h2>
+        <div class="status" id="st-api"><span class="dot"></span><span>API: comprobando…</span></div>
+        <div class="status" id="st-db" style="margin-top:8px"><span class="dot"></span><span>Base de datos: comprobando…</span></div>
+        <dl id="detalle" hidden>
+          <dt>PostgreSQL</dt><dd id="d-ver">—</dd>
+          <dt>Host BD</dt><dd id="d-host">—</dd>
+          <dt>IP interna BD</dt><dd id="d-ip">—</dd>
+          <dt>Base de datos</dt><dd id="d-name">—</dd>
+          <dt>Contenedor API</dt><dd id="d-cont">—</dd>
+        </dl>
+        <p class="note">Datos consultados ahora mismo a <code>/api/status</code> a través del proxy Nginx.</p>
+      </section>
+
+      <section class="card">
+        <h2>Autora</h2>
+        <p style="margin:0"><strong>Lily Pardo</strong></p>
+        <p class="muted" style="margin:2px 0 12px">Ficha 3602390 · SENA, Centro de Comercio y Servicios, Regional Tolima</p>
+        <div class="pills">
+          <span class="pill">Docker Engine 29</span><span class="pill">Docker Compose</span>
+          <span class="pill">Nginx 1.30</span><span class="pill">Python 3.14 · FastAPI</span>
+          <span class="pill">PostgreSQL 18</span><span class="pill">GitHub Actions</span><span class="pill">GHCR</span>
+          <span class="pill">Google Cloud</span>
+        </div>
+      </section>
+
+      <section class="card full">
+        <h2>Arquitectura</h2>
+        <div class="arch">
+          <span class="node n-client">Cliente<small>navegador</small></span><span class="arrow">→</span>
+          <span class="node n-proxy">proxy · Nginx<small>:8080 → :80 (único puerto expuesto)</small></span><span class="arrow">→</span>
+          <span class="node n-api">api · FastAPI<small>:8000 · UID 1001</small></span><span class="arrow">→</span>
+          <span class="node n-db">db · PostgreSQL<small>:5432</small></span><span class="arrow">→</span>
+          <span class="node n-vol">volumen pgdata<small>datos persistentes</small></span>
+        </div>
+        <p class="note">Los tres servicios se comunican por nombre en la red Docker <code>interna</code>. La API y la base de datos no publican puertos: solo se llega a ellas a través del proxy. La imagen de la API se construye con un Dockerfile multi-etapa y se publica automáticamente en GHCR; el servidor la descarga y se actualiza solo en cada cambio de <code>main</code>.</p>
+      </section>
+
+      <section class="card">
+        <h2>Endpoints</h2>
+        <ul class="links">
+          <li><a href="/health"><span><code>GET /health</code></span><span class="muted">estado de la API</span></a></li>
+          <li><a href="/api/status"><span><code>GET /api/status</code></span><span class="muted">API → PostgreSQL</span></a></li>
+          <li><a href="/api/notas"><span><code>GET /api/notas</code></span><span class="muted">datos persistentes</span></a></li>
+          <li><a href="/docs"><span><code>/docs</code></span><span class="muted">Swagger UI</span></a></li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Repositorio y CI/CD</h2>
+        <ul class="links">
+          <li><a href="https://github.com/articulacionTics/docker_SENA" target="_blank" rel="noopener"><span>Repositorio en GitHub</span><span class="muted">↗</span></a></li>
+          <li><a href="https://github.com/articulacionTics/docker_SENA/actions" target="_blank" rel="noopener"><span>GitHub Actions</span><span class="muted">↗</span></a></li>
+          <li><a href="https://github.com/articulacionTics/docker_SENA/pkgs/container/docker_sena" target="_blank" rel="noopener"><span>Imagen en GHCR</span><span class="muted">↗</span></a></li>
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <footer>Docker Multiservice Lab · Lily Pardo · SENA 2026</footer>
+
+  <script>
+    function marcar(id, ok, texto) {
+      const el = document.getElementById(id);
+      el.classList.remove("ok", "bad");
+      el.classList.add(ok ? "ok" : "bad");
+      el.lastElementChild.textContent = texto;
+    }
+    async function comprobar() {
+      try {
+        const h = await fetch("/health", { cache: "no-store" });
+        marcar("st-api", h.ok, h.ok ? "API: en línea" : "API: error " + h.status);
+      } catch (e) { marcar("st-api", false, "API: sin respuesta"); }
+      try {
+        const r = await fetch("/api/status", { cache: "no-store" });
+        const d = await r.json();
+        if (r.ok && d.database === "connected") {
+          marcar("st-db", true, "Base de datos: conectada");
+          document.getElementById("d-ver").textContent = d.postgres_version;
+          document.getElementById("d-host").textContent = d.db_host;
+          document.getElementById("d-ip").textContent = d.db_ip;
+          document.getElementById("d-name").textContent = d.db_name;
+          document.getElementById("d-cont").textContent = d.api_hostname;
+          document.getElementById("detalle").hidden = false;
+        } else {
+          marcar("st-db", false, "Base de datos: " + (d.detail || "no disponible"));
+        }
+      } catch (e) { marcar("st-db", false, "Base de datos: sin respuesta"); }
+    }
+    comprobar();
+    setInterval(comprobar, 15000);
+  </script>
+</body>
+</html>

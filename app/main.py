@@ -1,6 +1,7 @@
 """API mínima del laboratorio Docker multiservicio.
 
 Endpoints:
+  GET  /            -> página de inicio (HTML con el estado en vivo)
   GET  /health      -> estado del proceso (no consulta la BD)
   GET  /api/status  -> resuelve el hostname de la BD y consulta PostgreSQL
   GET  /api/notas   -> lista las notas guardadas (prueba de persistencia)
@@ -10,13 +11,16 @@ Endpoints:
 import logging
 import socket
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from app import database
 
 log = logging.getLogger("uvicorn.error")
+INDEX_HTML = Path(__file__).parent / "static" / "index.html"
 
 
 @asynccontextmanager
@@ -34,6 +38,11 @@ app = FastAPI(title="Docker Multiservice Lab API", version="1.0.0", lifespan=lif
 
 class NotaIn(BaseModel):
     texto: str = Field(min_length=1, max_length=200)
+
+
+@app.get("/", include_in_schema=False)
+def inicio():
+    return FileResponse(INDEX_HTML, media_type="text/html")
 
 
 @app.get("/health")
