@@ -38,7 +38,7 @@ class NotaIn(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "okis"}
+    return {"status": "ok"}
 
 
 @app.get("/api/status")
