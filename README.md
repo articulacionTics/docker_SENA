@@ -415,23 +415,8 @@ Según la guía GFPI-F-135 (sección 4 y Anexo C), **el único entregable califi
 2. El repositorio y el paquete de GHCR deben ser **públicos**. Los dos lo son: los enlaces se abren y la imagen se descarga sin credenciales.
 3. Este README debe identificar a la autora y lo desarrollado. Ver [Autora y trabajo desarrollado](#autora-y-trabajo-desarrollado).
 
-### Cómo lo revisa el instructor
 
-El instructor **clona el repositorio, ejecuta `docker compose up -d --build`** (ver [Inicio rápido](#inicio-rápido-evaluación-del-instructor)) y verifica los 9 criterios del Anexo C:
 
-| # | Criterio del Anexo C | Dónde se demuestra |
-|---|---|---|
-| 1 | La solución se levanta con un solo comando desde una copia limpia | `git clone` → `cp .env.example .env` → `docker compose up -d --build` → http://localhost:8080 ([prueba realizada](docs/checklist-anexo-c.md#1-prueba-desde-copia-limpia-simulación-del-instructor)) |
-| 2 | Matriz de requisitos de infraestructura y diagrama de arquitectura | [`docs/requisitos.md`](docs/requisitos.md) (RI-xx con criterio de aceptación) · [`docs/arquitectura.png`](docs/arquitectura.png) |
-| 3 | Entorno de cada integrante e instalación de Docker Engine | [`docs/entorno.md`](docs/entorno.md) (SO, ruta 2B/WSL2, `docker --version`, `docker compose version`) |
-| 4 | Imagen de la API con Dockerfile multi-etapa y usuario sin privilegios | [`Dockerfile`](Dockerfile) · `docker history` en [`docs/imagenes.md`](docs/imagenes.md) |
-| 5 | Tres servicios en Compose con red interna; solo el proxy expone puerto | [`docker-compose.yml`](docker-compose.yml) · `docker compose ps` |
-| 6 | Persistencia de PostgreSQL mediante un volumen | `down` + `up` conservan los datos ([`docs/pruebas.md`](docs/pruebas.md) P5) |
-| 7 | Imagen publicada en un registry | [Paquete en GHCR](https://github.com/articulacionTics/docker_SENA/pkgs/container/docker_sena) |
-| 8 | README, manual técnico y despliegue remoto | Este README · [`docs/manual-tecnico.md`](docs/manual-tecnico.md) (arquitectura, pruebas, propuesta de escalamiento) |
-| 9 | Publicación automática al integrar cambios en `main` | [`.github/workflows/`](.github/workflows/publicar-imagen.yml) · [pestaña Actions](https://github.com/articulacionTics/docker_SENA/actions) · [`docs/despliegue-automatizado.md`](docs/despliegue-automatizado.md) |
-
-El estado verificado de cada criterio está en [`docs/checklist-anexo-c.md`](docs/checklist-anexo-c.md).
 
 ### Evidencias por actividad
 
@@ -454,8 +439,10 @@ El estado verificado de cada criterio está en [`docs/checklist-anexo-c.md`](doc
 - [x] Etiqueta `v1.0.0` publicada.
 - [x] Enlace público de GitHub Actions verificado (se abre sin sesión).
 - [x] Nombre de la autora y trabajo desarrollado en este README.
-- [ ] *Release* `v1.0.0` creado en GitHub (*Releases → Draft a new release*).
-- [x] Despliegue en un servidor remoto: http://34.60.209.202:8080/health (Google Cloud e2-micro), con despliegue continuo desde GitHub Actions.
+- [x] *Release* `v1.0.0` creado en GitHub (*Releases → Draft a new release*).
+- [x] Despliegue en un servidor remoto en GCP: http://34.60.209.202:8080/health (Google Cloud e2-micro), con despliegue continuo desde GitHub Actions.
+  
+El estado verificado de cada criterio está en [`docs/checklist-anexo-c.md`](docs/checklist-anexo-c.md).
 
 ## Autora y trabajo desarrollado
 
