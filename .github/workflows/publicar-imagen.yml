@@ -1,0 +1,73 @@
+name: Publicar imagen
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+
+env:
+  REGISTRY: ghcr.io
+  IMAGEN: ${{ github.repository }}   # docker/metadata-action lo normaliza a minúsculas
+
+jobs:
+  construir-y-publicar:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Descargar el codigo del repositorio
+        uses: actions/checkout@v7
+
+      - name: Preparar Buildx, el constructor de imagenes
+        uses: docker/setup-buildx-action@v4
+
+      - name: Autenticarse en el registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calcular las etiquetas de la imagen
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGEN }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=short
+            type=semver,pattern={{version}}
+
+      - name: Construir la imagen y publicarla
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Despliegue continuo (AA5 paso 4). Queda desactivado hasta que exista un
+  # servidor: se activa creando la variable de repositorio
+  # DESPLIEGUE_HABILITADO=true y los secretos SERVIDOR_HOST, SERVIDOR_USUARIO
+  # y SERVIDOR_SSH_KEY (Settings > Secrets and variables > Actions).
+  desplegar:
+    needs: construir-y-publicar
+    if: github.ref == 'refs/heads/main' && vars.DESPLIEGUE_HABILITADO == 'true'
+    runs-on: ubuntu-latest
+    environment: produccion   # permite exigir aprobacion humana
+    steps:
+      - name: Actualizar los contenedores del servidor
+        env:
+          SSH_KEY: ${{ secrets.SERVIDOR_SSH_KEY }}
+          HOST: ${{ secrets.SERVIDOR_HOST }}
+          USUARIO: ${{ secrets.SERVIDOR_USUARIO }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # En el servidor NO se construye: se descarga la etiqueta inmutable sha- de este commit
+          ssh -o StrictHostKeyChecking=accept-new "$USUARIO@$HOST" \
+            "cd /srv/app && git pull --ff-only && export API_TAG=sha-${GITHUB_SHA::7} && docker compose --env-file .env -f deploy/docker-compose.prod.yml pull && docker compose --env-file .env -f deploy/docker-compose.prod.yml up -d"
