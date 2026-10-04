@@ -59,6 +59,22 @@ jobs:
     runs-on: ubuntu-latest
     environment: produccion   # permite exigir aprobacion humana
     steps:
+      - name: Verificar la configuracion del despliegue
+        env:
+          SSH_KEY: ${{ secrets.SERVIDOR_SSH_KEY }}
+          HOST: ${{ secrets.SERVIDOR_HOST }}
+          USUARIO: ${{ secrets.SERVIDOR_USUARIO }}
+        run: |
+          # Solo comprueba que existan; nunca imprime los valores
+          falta=0
+          [ -n "$HOST" ]    || { echo "::error::Falta el secreto SERVIDOR_HOST (Settings > Secrets and variables > Actions > pestaña Secrets)"; falta=1; }
+          [ -n "$USUARIO" ] || { echo "::error::Falta el secreto SERVIDOR_USUARIO"; falta=1; }
+          [ -n "$SSH_KEY" ] || { echo "::error::Falta el secreto SERVIDOR_SSH_KEY"; falta=1; }
+          if [ -n "$SSH_KEY" ] && ! printf '%s\n' "$SSH_KEY" | grep -q 'BEGIN OPENSSH PRIVATE KEY'; then
+            echo "::error::SERVIDOR_SSH_KEY no parece una clave privada OpenSSH completa (debe incluir las lineas BEGIN/END)"; falta=1
+          fi
+          exit $falta
+
       - name: Actualizar los contenedores del servidor
         env:
           SSH_KEY: ${{ secrets.SERVIDOR_SSH_KEY }}
@@ -69,5 +85,5 @@ jobs:
           printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           # En el servidor NO se construye: se descarga la etiqueta inmutable sha- de este commit
-          ssh -o StrictHostKeyChecking=accept-new "$USUARIO@$HOST" \
-            "cd /srv/app && git pull --ff-only && export API_TAG=sha-${GITHUB_SHA::7} && docker compose --env-file .env -f deploy/docker-compose.prod.yml pull && docker compose --env-file .env -f deploy/docker-compose.prod.yml up -d"
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new "$USUARIO@$HOST" \
+            "cd /srv/app && git pull --ff-only && export API_TAG=sha-${GITHUB_SHA::7} && docker compose --env-file .env -f deploy/docker-compose.prod.yml pull && docker compose --env-file .env -f deploy/docker-compose.prod.yml up -d && sleep 15 && curl -fsS http://localhost:\${PROXY_PORT:-8080}/health"
