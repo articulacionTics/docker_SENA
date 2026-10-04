@@ -1,0 +1,75 @@
+# Compose para el SERVIDOR remoto (producción).
+# Diferencia con ../docker-compose.yml: aquí NO hay "build:". La API usa la
+# imagen ya construida y publicada por GitHub Actions en GHCR, con una
+# etiqueta INMUTABLE (sha-xxxxxxx o una versión x.y.z), nunca "latest".
+#
+# Uso en el servidor (desde la raíz de la copia del repositorio):
+#   cp .env.example .env            # y cambiar DB_ADMIN_PASSWORD
+#   export API_TAG=sha-xxxxxxx      # o 1.0.0
+#   export PROXY_PORT=8080          # puerto asignado por el instructor
+#   docker compose --env-file .env -f deploy/docker-compose.prod.yml pull
+#   docker compose --env-file .env -f deploy/docker-compose.prod.yml up -d
+# Volver atrás (rollback): exportar la etiqueta anterior y repetir "up -d".
+
+name: docker-sena-prod
+
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD}
+    command: ["postgres", "-c", "shared_buffers=32MB", "-c", "max_connections=20"]
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    networks: [interna]
+
+  api:
+    # En el servidor NO se usa build: la imagen ya viene construida
+    image: ghcr.io/articulaciontics/docker_sena:${API_TAG:?Defina API_TAG con una etiqueta inmutable, p. ej. sha-xxxxxxx o 1.0.0}
+    env_file: ../.env
+    environment:
+      DB_HOST: db
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    restart: unless-stopped
+    networks: [interna]
+
+  proxy:
+    image: nginx:1.30-alpine
+    ports:
+      - "${PROXY_PORT:-8080}:80"
+    volumes:
+      - ../nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+    restart: unless-stopped
+    networks: [interna]
+
+volumes:
+  pgdata:
+
+networks:
+  interna:
+    driver: bridge
