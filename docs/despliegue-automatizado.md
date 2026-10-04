@@ -100,6 +100,30 @@ La segunda corrida la disparó el commit `eedc2f7`, que agregó la documentació
 
 La segunda corrida tardó un **36 % menos**. Las capas de dependencias (el venv de la etapa *builder*) no cambiaron, así que se recuperaron de la caché en lugar de reinstalarse. Como el cambio fue solo de documentación y `docs/` está en `.dockerignore`, ni siquiera cambió el contexto de construcción.
 
+### Publicación de la versión `v1.0.0` (etiqueta semver)
+
+```text
+$ git tag -a v1.0.0 -m "primera version"
+$ git push origin v1.0.0
+ * [new tag]         v1.0.0 -> v1.0.0
+```
+
+| Corrida | Evento | Resultado |
+|---|---|---|
+| https://github.com/articulacionTics/docker_SENA/actions/runs/37179265278 | push a `main` (`734cdec`) | ✅ success |
+| https://github.com/articulacionTics/docker_SENA/actions/runs/37179266818 | push de la etiqueta `v1.0.0` | ✅ success |
+
+Etiquetas en GHCR después de la publicación:
+
+```text
+{"tags":["1.0.0","latest","sha-936efea","sha-eedc2f7","sha-734cdec"]}
+1.0.0        sha256:618ff09892a7250cbc50cd9700854b7f08677352a29ad0f1e9efb6941754f789
+latest       sha256:618ff09892a7250cbc50cd9700854b7f08677352a29ad0f1e9efb6941754f789
+sha-734cdec  sha256:618ff09892a7250cbc50cd9700854b7f08677352a29ad0f1e9efb6941754f789
+```
+
+> **Observación:** la corrida de la etiqueta `v1.0.0` **volvió a publicar** `1.0.0`. Ahora apunta a la imagen construida por el runner (`618ff098…`) en lugar de la subida a mano (`24c0e659…`). Una etiqueta de versión puede reescribirse si alguien vuelve a publicarla; una etiqueta `sha-` corresponde a un único commit. Por eso, en producción se recomienda desplegar por `sha-…` o fijar el *digest* (`imagen@sha256:…`).
+
 ## 4. Cómo continúa la cadena hasta producción
 
 El job **`desplegar`** ya está escrito en el mismo workflow. Solo se ejecuta si el anterior terminó bien (`needs:`), si el cambio está en `main` y si la variable de repositorio `DESPLIEGUE_HABILITADO` vale `true`. Usa `environment: produccion`, lo que permite exigir **aprobación humana** antes de desplegar.
